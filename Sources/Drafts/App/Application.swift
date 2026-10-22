@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         windows = WindowCoordinator(store: store, preferences: preferences, hotKeys: hotKeys)
         installMainMenu()
         installStatusItem()
-        hotKeys.onOpen = { [weak self] in self?.windows.openNewestNote() }
+        hotKeys.onOpen = { [weak self] in self?.windows.toggleScratchpad() }
         hotKeys.onList = { [weak self] in self?.windows.showFullList() }
         preferences.$value.sink { [weak self] value in
             self?.hotKeys.register(value)
@@ -169,7 +169,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     @objc private func bulletList() { activeEditor?.toggleBullets() }
     @objc private func about() {
         NSApp.orderFrontStandardAboutPanel(options: [
-            .applicationName: "Drafts", .applicationVersion: "0.6.0",
+            .applicationName: "Drafts", .applicationVersion: "0.6.1",
             .credits: NSAttributedString(string: "A minimal, local-only scratchpad.")
         ])
         NSApp.activate(ignoringOtherApps: true)

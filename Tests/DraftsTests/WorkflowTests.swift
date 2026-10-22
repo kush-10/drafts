@@ -36,7 +36,7 @@ final class WorkflowTests: XCTestCase {
         if let directory, FileManager.default.fileExists(atPath: directory.path) { try FileManager.default.removeItem(at: directory) }
     }
 
-    func testOpenBringsNoteForwardAndNeverTogglesItOff() throws {
+    func testExplicitOpenBringsNoteForwardWithoutHidingIt() throws {
         coordinator.newBlank()
         let id = try XCTUnwrap(workspace.currentID)
         coordinator.openNewestNote()
@@ -46,6 +46,92 @@ final class WorkflowTests: XCTestCase {
         coordinator.openNewestNote()
         XCTAssertEqual(workspace.currentID, id)
         XCTAssertEqual(store.activeNotes.count, 1)
+    }
+
+    func testShortcutRepeatedlyShowsAndHidesWithoutCreatingExtraBlankNotes() throws {
+        coordinator.toggleScratchpad()
+        let id = try XCTUnwrap(workspace.currentID)
+        for _ in 0..<5 {
+            XCTAssertTrue(coordinator.scratchpad?.isVisible == true)
+            coordinator.toggleScratchpad()
+            XCTAssertFalse(coordinator.scratchpad?.isVisible == true)
+            coordinator.toggleScratchpad()
+            XCTAssertEqual(workspace.currentID, id)
+        }
+        XCTAssertEqual(store.notes.count, 1)
+        XCTAssertEqual(NoteStore(directory: directory).notes.count, 1)
+    }
+
+    func testShortcutHidesAndFlushesPendingEditsBeforeReopeningNewestCreatedNote() throws {
+        let older = try XCTUnwrap(store.create(content: EditorStyle.plain("Older"), now: Date().addingTimeInterval(-200)))
+        let newest = try XCTUnwrap(store.create(content: EditorStyle.plain("Newest"), now: Date().addingTimeInterval(-100)))
+        coordinator.open(older.id)
+        let view = try XCTUnwrap(coordinator.editor.textView)
+        view.insertText("Edited older", replacementRange: NSRange(location: 0, length: view.string.utf16.count))
+        XCTAssertEqual(store.pendingCount, 1)
+        coordinator.toggleScratchpad()
+        XCTAssertFalse(coordinator.scratchpad?.isVisible == true)
+        XCTAssertEqual(store.pendingCount, 0)
+        XCTAssertEqual(NoteStore(directory: directory).note(older.id)?.text, "Edited older")
+        coordinator.toggleScratchpad()
+        XCTAssertTrue(coordinator.scratchpad?.isVisible == true)
+        XCTAssertEqual(workspace.currentID, newest.id)
+        XCTAssertEqual(view.string, "Newest")
+        XCTAssertEqual(store.notes.count, 2)
+    }
+
+    func testShortcutHidesPickerAndNoteTogetherAndReopensEditor() throws {
+        coordinator.toggleScratchpad()
+        coordinator.showNotePicker()
+        _ = try waitForPickerSearchField()
+        workspace.pickerQuery = "search"
+        coordinator.toggleScratchpad()
+        XCTAssertFalse(workspace.pickerVisible)
+        XCTAssertEqual(workspace.pickerQuery, "")
+        XCTAssertFalse(coordinator.scratchpad?.isVisible == true)
+        coordinator.toggleScratchpad()
+        XCTAssertTrue(coordinator.scratchpad?.isVisible == true)
+        XCTAssertFalse(workspace.pickerVisible)
+        XCTAssertTrue(coordinator.scratchpad?.firstResponder === coordinator.editor.textView)
+    }
+
+    func testShortcutKeepsUnsavedNoteOpenOnFailureAndCanRetry() throws {
+        coordinator.toggleScratchpad()
+        let id = try XCTUnwrap(workspace.currentID)
+        // Block atomic writes with a directory at this test note's file path.
+        let file = directory.appendingPathComponent(id.uuidString).appendingPathExtension("json")
+        try FileManager.default.removeItem(at: file)
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+        coordinator.editor.textView?.insertText("Keep unsaved edits", replacementRange: NSRange(location: 0, length: 0))
+        coordinator.toggleScratchpad()
+        XCTAssertTrue(coordinator.scratchpad?.isVisible == true)
+        XCTAssertEqual(store.pendingCount, 1)
+        XCTAssertEqual(store.note(id)?.text, "Keep unsaved edits")
+        XCTAssertNotNil(store.lastError)
+        if let sheet = coordinator.scratchpad?.attachedSheet { coordinator.scratchpad?.endSheet(sheet) }
+        try FileManager.default.removeItem(at: file)
+        coordinator.toggleScratchpad()
+        XCTAssertFalse(coordinator.scratchpad?.isVisible == true)
+        XCTAssertEqual(store.pendingCount, 0)
+        XCTAssertEqual(NoteStore(directory: directory).note(id)?.text, "Keep unsaved edits")
+    }
+
+    func testShortcutHidingAppliesOnlyOptInRetention() throws {
+        let old = try XCTUnwrap(store.create(content: EditorStyle.plain("Expired note"), now: Date().addingTimeInterval(-120)))
+        coordinator.toggleScratchpad()
+        coordinator.toggleScratchpad()
+        XCTAssertNotNil(store.note(old.id))
+        preferences.value.autoDeleteEnabled = true
+        preferences.value.retentionAmount = 1
+        preferences.value.retentionUnit = .minutes
+        coordinator.toggleScratchpad()
+        coordinator.toggleScratchpad()
+        XCTAssertNil(store.note(old.id))
+        XCTAssertFalse(coordinator.scratchpad?.isVisible == true)
+        coordinator.toggleScratchpad()
+        XCTAssertTrue(coordinator.scratchpad?.isVisible == true)
+        XCTAssertEqual(store.activeNotes.count, 1)
+        XCTAssertTrue(try XCTUnwrap(store.newestNote).isBlank)
     }
 
     func testOpenChoosesNewestCreatedNotMostRecentlyEditedOrSelected() throws {

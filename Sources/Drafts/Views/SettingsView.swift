@@ -12,7 +12,7 @@ struct SettingsView: View {
                 Text("Settings").font(.system(size: 18, weight: .medium))
 
                 section("Keyboard shortcuts") {
-                    shortcutRow("Open newest note", keyPath: \.openShortcut)
+                    shortcutRow("Show / hide notepad", keyPath: \.openShortcut)
                     shortcutRow("Full list editor", keyPath: \.listShortcut)
                     HStack { Text("New blank note (in Drafts)"); Spacer(); KeyCap(text: "⌘N") }
                     HStack { Text("Copy all and close"); Spacer(); KeyCap(text: LocalCommand.copyAndClose.label) }

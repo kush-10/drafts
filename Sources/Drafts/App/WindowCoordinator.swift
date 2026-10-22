@@ -47,8 +47,13 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
         showScratchpad()
     }
 
+    func toggleScratchpad() {
+        if scratchpad?.isVisible == true { hideScratchpad() }
+        else { openNewestNote() }
+    }
+
     func openNewestNote() {
-        // Open is deliberately not a toggle. Creation time, not edits or last selection, determines newest.
+        // Explicit opening stays idempotent. Creation time, not edits or last selection, determines newest.
         guard store.flush() else { showStorageError(); return }
         if let note = store.newestNote { open(note.id) }
         else { newBlank() }

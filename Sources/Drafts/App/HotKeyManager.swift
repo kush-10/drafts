@@ -46,7 +46,7 @@ final class HotKeyManager: ObservableObject {
             if let reference = references.removeValue(forKey: index) { UnregisterEventHotKey(reference) }
             registrationFailures.removeValue(forKey: index)
         }
-        let names = ["Open newest note", "Full list editor"]
+        let names = ["Show / hide notepad", "Full list editor"]
         for index in changed {
             let shortcut = shortcuts[index]
             var reference: EventHotKeyRef?

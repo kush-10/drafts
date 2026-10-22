@@ -3,7 +3,7 @@ Drafts — install on macOS 14 or later
 1. Drag Drafts.app onto Applications.
 2. Eject this disk image.
 3. Open Drafts from Applications.
-4. Press Option + Space to open your notepad.
+4. Press Option + Space to open your notepad; press again to save and hide.
 
 Drafts is a menu-bar utility, so there is no Dock icon. The menu-bar icon can
 be hidden in Settings. Open a note and press Command + comma to restore it.
@@ -27,7 +27,7 @@ the download rather than overriding that warning.
 
 Shortcuts
 
-Option + Space          Open the newest note
+Option + Space          Show newest note / save and hide the visible notepad
 Command + N             New blank draft (reuses an existing blank)
 Command + F             Find saved notes inside the notepad
 Shift + Command + C     Copy the entire note as text and hide

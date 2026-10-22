@@ -2,7 +2,7 @@
 
 A little room to think. A minimal, dark, translucent scratchpad that floats over your work and saves every note on your Mac.
 
-[Download v0.6.0 preview](https://github.com/kush-10/drafts/releases/tag/v0.6.0) · [Installation](#install) · [Shortcuts](#shortcuts) · [Build from source](#build-from-source)
+[Download v0.6.1 preview](https://github.com/kush-10/drafts/releases/tag/v0.6.1) · [Installation](#install) · [Shortcuts](#shortcuts) · [Build from source](#build-from-source)
 
 **macOS 14+ · Apple Silicon + Intel · MIT licensed**
 
@@ -10,12 +10,12 @@ A little room to think. A minimal, dark, translucent scratchpad that floats over
 
 ## Install
 
-1. Download **[Drafts-0.6.0-universal.dmg](https://github.com/kush-10/drafts/releases/download/v0.6.0/Drafts-0.6.0-universal.dmg)** from the [official release](https://github.com/kush-10/drafts/releases/tag/v0.6.0).
+1. Download **[Drafts-0.6.1-universal.dmg](https://github.com/kush-10/drafts/releases/download/v0.6.1/Drafts-0.6.1-universal.dmg)** from the [official release](https://github.com/kush-10/drafts/releases/tag/v0.6.1).
 2. Open the disk image and drag **Drafts** into **Applications**.
 3. Eject the disk image, then open Drafts from Applications.
-4. Press **⌥Space** to open the notepad. There is **no Dock icon**; Drafts normally lives in the menu bar.
+4. Press **⌥Space** to open the notepad; press it again to save and hide. There is **no Dock icon**; Drafts normally lives in the menu bar.
 
-A [ZIP download](https://github.com/kush-10/drafts/releases/download/v0.6.0/Drafts-0.6.0-universal.zip) is available too: extract it, move `Drafts.app` into Applications, then open it. GitHub’s automatically generated **Source code** archives are not app installers.
+A [ZIP download](https://github.com/kush-10/drafts/releases/download/v0.6.1/Drafts-0.6.1-universal.zip) is available too: extract it, move `Drafts.app` into Applications, then open it. GitHub’s automatically generated **Source code** archives are not app installers.
 
 ### First-launch security warning
 
@@ -34,7 +34,7 @@ Do **not** disable Gatekeeper globally, bypass a managed Mac’s restrictions, o
 Download `SHA256SUMS.txt` from the same release. In Terminal, run this in the folder containing the DMG and compare its hash with the matching line in that file:
 
 ```sh
-shasum -a 256 Drafts-0.6.0-universal.dmg
+shasum -a 256 Drafts-0.6.1-universal.dmg
 ```
 
 The release also includes `release-info.json`, which states the version, architectures, signing type, and notarization status. Checksums detect mismatched downloads; they are not an independent developer identity or a replacement for notarization.
@@ -57,7 +57,7 @@ The release also includes `release-info.json`, which states the version, archite
 
 | Shortcut | Action |
 | --- | --- |
-| **⌥Space** | Open the newest surviving note **by creation time**. Not a toggle. |
+| **⌥Space** | Show the newest surviving note **by creation time** when hidden; save and hide when visible, including the picker. |
 | **⌘N** | Open a blank draft, reusing the current or another existing blank. |
 | **⇧⌘C** | Copy the whole note as plain text, save, and hide the notepad. |
 | **⌘F** | Show the in-window note picker. Type to search, **↑/↓** to select, **Return** to open. |
@@ -67,7 +67,7 @@ The release also includes `release-info.json`, which states the version, archite
 | **⌘B / ⌘I / ⌘U** | Bold / italic / underline. |
 | **⇧⌘B** | Toggle bullet points. |
 
-Only Open and Full list are global shortcuts. The others work while using Drafts. Global bindings can be changed in Settings; duplicate bindings and reserved local shortcuts are rejected. Standard undo/redo, cut/copy/paste, select all, and close-window commands remain available. `⌘C` is normal selection copy; `⇧⌘C` copies everything.
+Only Show / hide notepad and Full list are global shortcuts. The others work while using Drafts. Global bindings can be changed in Settings; duplicate bindings and reserved local shortcuts are rejected. Standard undo/redo, cut/copy/paste, select all, and close-window commands remain available. `⌘C` is normal selection copy; `⇧⌘C` copies everything.
 
 Return continues a bullet list. Return on an empty bullet exits it. Clipboard contents are **never imported automatically**; explicit paste keeps basic text styles and ignores images.
 
@@ -79,7 +79,7 @@ Open **Settings → Hide menu bar icon**. Drafts continues running without a men
 
 The notepad has a fixed **760 × 500** size and opens centered on the display containing the pointer. Drag unused bottom-bar space to move it temporarily; Open or New resets its size and position. The full-list editor uses a separate fixed **1000 × 640** content size. Opening the picker does not move or resize anything.
 
-The picker searches note contents, ignoring case and accents and matching every search word. It lists active notes by creation time. Escape or clicking outside returns you to the current text and cursor selection. Selecting an older note does not create a new one; Open always returns to the newest-created note.
+The picker searches note contents, ignoring case and accents and matching every search word. It lists active notes by creation time. Escape or clicking outside returns you to the current text and cursor selection. Selecting an older note does not create a new one. The global shortcut saves and hides whichever note is visible; its next press opens the newest-created note. **Open Note** in the menu and reopening from Applications always open rather than toggle.
 
 Empty and whitespace-only drafts are reusable. New never overwrites nonblank notes, reuses a note from Trash, or removes pre-existing duplicate files. Previously saved rich text and legacy attachments remain preserved. Existing `#text` is ordinary text, not a tag.
 
@@ -130,7 +130,7 @@ open dist/Drafts.app
 
 Open `Package.swift` in Xcode, or use `swift run Drafts` for development. Build a universal app with `UNIVERSAL=1 ./scripts/build-app.sh`; generate versioned DMG/ZIP/checksums with `./scripts/package-release.sh`. See [distribution and notarization instructions](docs/DISTRIBUTION.md) for maintainers.
 
-Tests cover persistence, copy-and-close, blank reuse, picker focus and keyboard navigation, fixed geometry, text wrapping, table editing, safe deletion settings, migration, failed-save recovery, and menu-bar icon preferences. Optional sample screenshots:
+Tests cover persistence, shortcut toggling and save-failure recovery, copy-and-close, blank reuse, picker focus and keyboard navigation, fixed geometry, text wrapping, table editing, safe deletion settings, migration, and menu-bar icon preferences. Optional sample screenshots:
 
 ```sh
 DRAFTS_PREVIEW_DIRECTORY="$PWD/.build/previews" swift test --filter WorkflowTests/testViewsRenderAtFixedSizes

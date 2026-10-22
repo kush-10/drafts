@@ -88,6 +88,8 @@ private struct PickerSearchField: NSViewRepresentable {
         let field = NoteSearchField()
         field.isBordered = false
         field.drawsBackground = false
+        field.isEditable = true
+        field.isSelectable = true
         field.focusRingType = .none
         field.font = .systemFont(ofSize: 16)
         field.textColor = EditorStyle.textColor
@@ -128,7 +130,7 @@ final class NoteSearchField: NSTextField {
         guard let window else { return }
         DispatchQueue.main.async { [weak self, weak window] in
             guard let self, let window, self.window === window, window.isVisible else { return }
-            window.makeFirstResponder(self)
+            if window.makeFirstResponder(self) { self.selectText(nil) }
         }
     }
 }

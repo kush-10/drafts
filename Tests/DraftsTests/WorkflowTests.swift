@@ -286,8 +286,7 @@ final class WorkflowTests: XCTestCase {
         let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command, timestamp: 0, windowNumber: panel.windowNumber, context: nil, characters: "f", charactersIgnoringModifiers: "f", isARepeat: false, keyCode: 3))
         XCTAssertTrue(view.performKeyEquivalent(with: event))
         XCTAssertTrue(workspace.pickerVisible)
-        RunLoop.current.run(until: Date().addingTimeInterval(0.04))
-        let search = try XCTUnwrap(find(NoteSearchField.self, in: try XCTUnwrap(panel.contentView)))
+        let (search, _) = try waitForPickerSearchField()
         XCTAssertTrue(search.window === panel)
         XCTAssertNotNil(search.currentEditor())
         XCTAssertTrue(panel.isVisible)
@@ -313,9 +312,7 @@ final class WorkflowTests: XCTestCase {
         coordinator.newBlank()
         coordinator.showNotePicker()
         workspace.pickerQuery = "distinct"
-        RunLoop.current.run(until: Date().addingTimeInterval(0.04))
-        let search = try XCTUnwrap(find(NoteSearchField.self, in: try XCTUnwrap(coordinator.scratchpad?.contentView)))
-        let fieldEditor = try XCTUnwrap(search.currentEditor() as? NSTextView)
+        let (search, fieldEditor) = try waitForPickerSearchField()
         XCTAssertEqual(search.delegate?.control?(search, textView: fieldEditor, doCommandBy: NSSelectorFromString("insertNewline:")), true)
         XCTAssertEqual(workspace.currentID, older.id)
         XCTAssertFalse(workspace.pickerVisible)
@@ -327,9 +324,7 @@ final class WorkflowTests: XCTestCase {
         let older = try XCTUnwrap(store.create(content: EditorStyle.plain("Older note")))
         coordinator.newBlank()
         coordinator.showNotePicker()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.04))
-        let search = try XCTUnwrap(find(NoteSearchField.self, in: try XCTUnwrap(coordinator.scratchpad?.contentView)))
-        let fieldEditor = try XCTUnwrap(search.currentEditor() as? NSTextView)
+        let (search, fieldEditor) = try waitForPickerSearchField()
         XCTAssertEqual(search.delegate?.control?(search, textView: fieldEditor, doCommandBy: NSSelectorFromString("moveDown:")), true)
         XCTAssertEqual(search.delegate?.control?(search, textView: fieldEditor, doCommandBy: NSSelectorFromString("insertNewline:")), true)
         XCTAssertEqual(workspace.currentID, older.id)
@@ -345,9 +340,7 @@ final class WorkflowTests: XCTestCase {
         view.setSelectedRange(selection)
         coordinator.showNotePicker()
         workspace.pickerQuery = "no-matching-note"
-        RunLoop.current.run(until: Date().addingTimeInterval(0.04))
-        let search = try XCTUnwrap(find(NoteSearchField.self, in: try XCTUnwrap(coordinator.scratchpad?.contentView)))
-        let fieldEditor = try XCTUnwrap(search.currentEditor() as? NSTextView)
+        let (search, fieldEditor) = try waitForPickerSearchField()
         XCTAssertEqual(search.delegate?.control?(search, textView: fieldEditor, doCommandBy: NSSelectorFromString("insertNewline:")), true)
         XCTAssertTrue(workspace.pickerVisible)
         XCTAssertEqual(workspace.currentID, id)
@@ -358,6 +351,17 @@ final class WorkflowTests: XCTestCase {
         XCTAssertTrue(coordinator.scratchpad?.firstResponder === view)
         XCTAssertEqual(view.selectedRange(), selection)
         XCTAssertEqual(view.string, "Keep this draft")
+    }
+
+    private func waitForPickerSearchField() throws -> (NoteSearchField, NSTextView) {
+        let host = try XCTUnwrap(coordinator.scratchpad?.contentView)
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { [weak self] _, _ in
+            host.layoutSubtreeIfNeeded()
+            return self?.find(NoteSearchField.self, in: host)?.currentEditor() is NSTextView
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed, "The picker should focus its native search editor")
+        let field = try XCTUnwrap(find(NoteSearchField.self, in: host))
+        return (field, try XCTUnwrap(field.currentEditor() as? NSTextView))
     }
 
     private func find<V: NSView>(_ type: V.Type, in view: NSView) -> V? {

@@ -1,0 +1,45 @@
+Drafts — install on macOS 14 or later
+
+1. Drag Drafts.app onto Applications.
+2. Eject this disk image.
+3. Open Drafts from Applications.
+4. Press Option + Space to open your notepad.
+
+Drafts is a menu-bar utility, so there is no Dock icon. The menu-bar icon can
+be hidden in Settings. Open a note and press Command + comma to restore it.
+
+PREVIEW BUILD / MACOS SECURITY WARNING
+
+The current public preview is ad-hoc signed, not Apple-notarized. macOS may
+say it cannot verify the developer or check the app for malicious software.
+
+Only continue if you downloaded it from the official repository:
+https://github.com/kush-10/drafts/releases
+
+After trying to open the app, go to System Settings > Privacy & Security,
+find the message about Drafts, choose Open Anyway, and confirm Open.
+Your Mac may require administrator authentication. If your administrator
+blocks this option, do not bypass their policy; build from source instead.
+
+Do not disable Gatekeeper or remove quarantine from broad folders.
+If macOS reports actual malware or a damaged/modified app, stop and verify
+the download rather than overriding that warning.
+
+Shortcuts
+
+Option + Space          Open the newest note
+Command + N             New blank draft (reuses an existing blank)
+Command + F             Find saved notes inside the notepad
+Shift + Command + C     Copy the entire note as text and hide
+Escape                  Dismiss the picker, or hide the note
+Option + Shift + L      Separate full-list editor
+Command + comma         Settings
+
+Notes are stored only on this Mac:
+~/Library/Application Support/Drafts/Notes/
+
+Keep everything is the default storage policy. Automatic deletion is an
+optional setting and is permanent when enabled. Back up important notes.
+
+Documentation and source: https://github.com/kush-10/drafts
+License: MIT (see LICENSE.txt).

@@ -6,7 +6,8 @@ final class EditorBridge: ObservableObject {
         didSet { if oldValue !== textView { noteID = nil } }
     }
     private(set) var noteID: UUID?
-    var onFind: (() -> Void)?
+    var onNoteList: (() -> Void)?
+    var onToggleExpansion: (() -> Void)?
     var onCopyAndClose: (() -> Void)?
     var onSettings: (() -> Void)?
 
@@ -149,7 +150,8 @@ final class DraftsTextView: NSTextView {
             case "b": editorBridge?.toggleBold(); return true
             case "i": editorBridge?.toggleItalic(); return true
             case "u": editorBridge?.toggleUnderline(); return true
-            case "f": editorBridge?.onFind?(); return true
+            case "l": if let action = editorBridge?.onNoteList { action(); return true }
+            case "f": if let action = editorBridge?.onToggleExpansion { if !event.isARepeat { action() }; return true }
             case ",": if let action = editorBridge?.onSettings { action(); return true }
             default: break
             }

@@ -1,4 +1,4 @@
-Drafts — install on macOS 14 or later
+Drafts v0.7.0 — install on macOS 14 or later
 
 1. Drag Drafts.app onto Applications.
 2. Eject this disk image.
@@ -29,11 +29,16 @@ Shortcuts
 
 Option + Space          Show newest note / save and hide the visible notepad
 Command + N             New blank draft (reuses an existing blank)
-Command + F             Find saved notes inside the notepad
+Command + F             Expand to fill the display / restore previous size
+Command + L             Find saved notes in the integrated list
 Shift + Command + C     Copy the entire note as text and hide
 Escape                  Dismiss the picker, or hide the note
 Option + Shift + L      Separate full-list editor
 Command + comma         Settings
+
+Switch windows/apps or click outside the notepad to save and hide it.
+If saving fails, the note stays open. Expansion uses the display's usable
+area without entering a separate full-screen Space. Reopening starts compact.
 
 Notes are stored only on this Mac:
 ~/Library/Application Support/Drafts/Notes/

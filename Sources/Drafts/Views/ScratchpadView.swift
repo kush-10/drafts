@@ -7,6 +7,7 @@ final class WorkspaceState: ObservableObject {
     }
     @Published var pickerVisible = false
     @Published var pickerQuery = ""
+    @Published var notepadExpanded = false
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -22,12 +23,12 @@ struct ScratchpadView: View {
     @ObservedObject var preferences: PreferencesStore
     @ObservedObject var editor: EditorBridge
     let onSelect: (UUID) -> Void
-    let onFind: () -> Void
+    let onNoteList: () -> Void
     let onDismissPicker: () -> Void
     let onHide: () -> Void
     let onNew: () -> Void
     let onCopyAndClose: () -> Void
-    let onList: () -> Void
+    let onToggleExpansion: () -> Void
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -62,7 +63,7 @@ struct ScratchpadView: View {
                 .monospacedDigit().fixedSize()
                 .help(store.pendingCount > 0 ? "Saving…" : "Saved on this Mac. Drag here to move the window.")
             Spacer(minLength: 8)
-            action("Find", key: "⌘F", perform: onFind)
+            action("Notes", key: LocalCommand.noteList.label, perform: onNoteList)
             separator
             action("New", key: "⌘N", perform: onNew)
             separator
@@ -70,7 +71,7 @@ struct ScratchpadView: View {
             separator
             action("Hide", key: "esc", perform: onHide)
             separator
-            action("Full list", key: preferences.value.listShortcut.label, perform: onList)
+            action(workspace.notepadExpanded ? "Restore" : "Expand", key: LocalCommand.toggleExpansion.label, perform: onToggleExpansion)
         }
         .font(.system(size: 11)).foregroundStyle(DraftsTheme.secondary)
         .padding(.horizontal, 20).frame(height: 44)

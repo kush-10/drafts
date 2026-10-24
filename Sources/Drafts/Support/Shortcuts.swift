@@ -3,16 +3,16 @@ import Carbon
 
 // Shared labels and bindings for local menu commands.
 enum LocalCommand: CaseIterable {
-    case newNote, copyAndClose
+    case newNote, copyAndClose, noteList, toggleExpansion
     case bold, italic, underline, bullets
-    case undo, redo, cut, copy, paste, selectAll, find
+    case undo, redo, cut, copy, paste, selectAll
     case settings, quit
 
     enum Group: String, CaseIterable { case notes = "Notes", formatting = "Formatting", editing = "Editing", app = "App" }
 
     var group: Group {
         switch self {
-        case .newNote, .copyAndClose, .find: return .notes
+        case .newNote, .copyAndClose, .noteList, .toggleExpansion: return .notes
         case .bold, .italic, .underline, .bullets: return .formatting
         case .settings, .quit: return .app
         default: return .editing
@@ -33,7 +33,8 @@ enum LocalCommand: CaseIterable {
         case .copy: return "Copy"
         case .paste: return "Paste"
         case .selectAll: return "Select all"
-        case .find: return "Find notes"
+        case .noteList: return "Integrated note list"
+        case .toggleExpansion: return "Expand / restore notepad"
         case .settings: return "Settings"
         case .quit: return "Quit Drafts"
         }
@@ -50,7 +51,8 @@ enum LocalCommand: CaseIterable {
         case .copy, .copyAndClose: return "c"
         case .paste: return "v"
         case .selectAll: return "a"
-        case .find: return "f"
+        case .noteList: return "l"
+        case .toggleExpansion: return "f"
         case .settings: return ","
         case .quit: return "q"
         }

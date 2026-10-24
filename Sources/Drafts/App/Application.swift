@@ -76,7 +76,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        if menuItem.action == #selector(findNotes) { return NSApp.keyWindow === windows?.scratchpad && windows?.scratchpad?.isVisible == true }
+        if menuItem.action == #selector(findNotes) || menuItem.action == #selector(toggleExpansion) {
+            return NSApp.keyWindow === windows?.scratchpad && windows?.scratchpad?.isVisible == true
+        }
         if menuItem.action == #selector(copyAndClose) {
             return NSApp.keyWindow === windows?.scratchpad && windows?.scratchpad?.isVisible == true
                 && store.note(windows?.workspace.currentID)?.deletedAt == nil && store.note(windows?.workspace.currentID) != nil
@@ -102,6 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         file.addItem(item("Open Note", #selector(openNote)))
         file.addItem(command(.newNote, action: #selector(newNote)))
         file.addItem(command(.copyAndClose, action: #selector(copyAndClose)))
+        file.addItem(command(.toggleExpansion, action: #selector(toggleExpansion)))
         file.addItem(.separator())
         file.addItem(item("Full List Editor…", #selector(fullList)))
         file.addItem(item("Close Window", #selector(closeWindow), key: "w"))
@@ -121,7 +124,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
             edit.addItem(entry)
         }
         edit.addItem(.separator())
-        let find = command(.find, action: #selector(findNotes))
+        let find = command(.noteList, action: #selector(findNotes))
         edit.addItem(find)
         addMenu(edit, title: "Edit", to: main)
 
@@ -156,6 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     @objc private func copyAndClose() { windows.copyAndClose() }
     @objc private func fullList() { windows.showFullList() }
     @objc private func findNotes() { windows.showNotePicker() }
+    @objc private func toggleExpansion() { windows.toggleExpansion() }
     @objc private func settings() { windows.showSettings() }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func closeWindow() {
@@ -169,7 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     @objc private func bulletList() { activeEditor?.toggleBullets() }
     @objc private func about() {
         NSApp.orderFrontStandardAboutPanel(options: [
-            .applicationName: "Drafts", .applicationVersion: "0.6.1",
+            .applicationName: "Drafts", .applicationVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Development",
             .credits: NSAttributedString(string: "A minimal, local-only scratchpad.")
         ])
         NSApp.activate(ignoringOtherApps: true)

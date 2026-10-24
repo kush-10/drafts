@@ -16,12 +16,16 @@ struct SettingsView: View {
                     shortcutRow("Full list editor", keyPath: \.listShortcut)
                     HStack { Text("New blank note (in Drafts)"); Spacer(); KeyCap(text: "⌘N") }
                     HStack { Text("Copy all and close"); Spacer(); KeyCap(text: LocalCommand.copyAndClose.label) }
-                    HStack { Text("Find notes (in notepad)"); Spacer(); KeyCap(text: "⌘F") }
+                    HStack { Text("Integrated note list"); Spacer(); KeyCap(text: LocalCommand.noteList.label) }
+                    HStack { Text("Expand / restore notepad"); Spacer(); KeyCap(text: LocalCommand.toggleExpansion.label) }
                     HStack { Text("Hide note"); Spacer(); KeyCap(text: "esc") }
                     if let error = shortcutError ?? hotKeys.error {
                         Text(error).font(.system(size: 11)).foregroundStyle(DraftsTheme.text).textSelection(.enabled)
                     }
                 }
+
+                Text("Switching to another window or clicking outside the notepad saves and hides it. A failed save keeps your note open.")
+                    .font(.system(size: 11)).foregroundStyle(DraftsTheme.secondary)
 
                 Toggle("Keep above other windows", isOn: $preferences.value.keepOnTop)
                 VStack(alignment: .leading, spacing: 8) {

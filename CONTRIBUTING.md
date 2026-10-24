@@ -12,7 +12,7 @@ swift test
 open dist/Drafts.app
 ```
 
-Quit an older running app before launching another copy. Test note creation, blank reuse, save/hide/reopen, the in-window picker, clipboard copy, and the separate table. Use temporary directories and a uniquely named pasteboard in automated tests, never real notes or the user’s clipboard.
+Quit an older running app before launching another copy. Test note creation, blank reuse, save/hide/reopen, ⌘F expansion/restoration, the ⌘L integrated list, outside-click and focus-loss saving, clipboard copy, and the separate table. Use temporary directories and a uniquely named pasteboard in automated tests, never real notes or the user’s clipboard.
 
 Add regression tests for fixes. Keep changes focused, preserve existing note contents and settings during migrations, and document any changes to deletion behavior. Automatic deletion must remain opt-in and clearly disclosed.
 

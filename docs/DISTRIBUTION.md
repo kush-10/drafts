@@ -20,7 +20,7 @@ swift test
 
 The script reads the version from `Support/Info.plist`, builds both Apple Silicon and Intel slices, verifies the app signature and architectures, creates and verifies the DMG, and writes artifacts into `dist/releases/v<VERSION>/`. It stages a separate app so it does not overwrite a locally running `dist/Drafts.app`.
 
-It refuses to overwrite an existing version’s release assets. Bump `CFBundleShortVersionString` and `CFBundleVersion` for a new release. Keep the About version in `Sources/Drafts/App/Application.swift` in sync.
+It refuses to overwrite an existing version’s release assets. Bump `CFBundleShortVersionString` and `CFBundleVersion` for a new release, and update README download links, `Support/Install.txt`, and release notes. The About panel reads its version directly from the app bundle.
 
 To build just the universal app locally:
 

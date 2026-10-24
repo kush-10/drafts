@@ -3,15 +3,16 @@ import XCTest
 @testable import Drafts
 
 final class ShortcutTests: XCTestCase {
-    func testOnlyTwoGlobalActionsAndLocalNewAndFindCommands() {
+    func testOnlyTwoGlobalActionsAndLocalNoteCommands() {
         let preferences = Preferences()
         XCTAssertEqual(preferences.openShortcut.label, "⌥Space")
         XCTAssertEqual(preferences.listShortcut.label, "⌥⇧L")
         XCTAssertEqual(preferences.shortcuts.count, 2)
-        XCTAssertEqual(LocalCommand.allCases.filter { $0.group == .notes }, [.newNote, .copyAndClose, .find])
+        XCTAssertEqual(LocalCommand.allCases.filter { $0.group == .notes }, [.newNote, .copyAndClose, .noteList, .toggleExpansion])
         XCTAssertEqual(LocalCommand.newNote.label, "⌘N")
-        XCTAssertEqual(LocalCommand.find.label, "⌘F")
-        XCTAssertEqual(LocalCommand.find.title, "Find notes")
+        XCTAssertEqual(LocalCommand.noteList.label, "⌘L")
+        XCTAssertEqual(LocalCommand.noteList.title, "Integrated note list")
+        XCTAssertEqual(LocalCommand.toggleExpansion.label, "⌘F")
         XCTAssertEqual(LocalCommand.copyAndClose.label, "⇧⌘C")
         XCTAssertFalse(LocalCommand.copyAndClose.shortcut.hasSameBinding(as: LocalCommand.copy.shortcut))
     }
@@ -21,6 +22,8 @@ final class ShortcutTests: XCTestCase {
         XCTAssertNotNil(preferences.shortcutConflict(preferences.openShortcut, replacing: \.listShortcut))
         XCTAssertNotNil(preferences.shortcutConflict(LocalCommand.bold.shortcut, replacing: \.listShortcut))
         XCTAssertNotNil(preferences.shortcutConflict(LocalCommand.copyAndClose.shortcut, replacing: \.listShortcut))
+        XCTAssertNotNil(preferences.shortcutConflict(LocalCommand.noteList.shortcut, replacing: \.openShortcut))
+        XCTAssertNotNil(preferences.shortcutConflict(LocalCommand.toggleExpansion.shortcut, replacing: \.openShortcut))
         XCTAssertNil(preferences.shortcutConflict(preferences.listShortcut, replacing: \.listShortcut))
     }
 

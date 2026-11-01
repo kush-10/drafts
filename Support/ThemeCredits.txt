@@ -1,0 +1,40 @@
+Drafts theme credits
+
+Catppuccin Latte, Frappe, Macchiato and Mocha use the Catppuccin palette:
+https://github.com/catppuccin/palette
+
+MIT License
+
+Copyright (c) 2021 Catppuccin
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Other named Drafts palettes are original colour combinations, distributed
+under the Drafts MIT license. The swatch-grid presentation and range of moods
+were inspired by these references; their implementation and theme files are
+not copied into Drafts:
+https://github.com/monkeytypegame/monkeytype
+https://github.com/alpine-vortex/rain-themes
+https://github.com/mbadolato/iTerm2-Color-Schemes
+
+The bundled Qwen3-Embedding-0.6B model is Apache-2.0 licensed:
+https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF
+The inference runtime is llama.cpp, MIT licensed:
+https://github.com/ggml-org/llama.cpp
+Full model and runtime licenses accompany the inference assets.

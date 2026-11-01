@@ -12,3 +12,5 @@ dist/
 *.key
 *.mobileprovision
 *.provisionprofile
+__pycache__/
+*.py[cod]

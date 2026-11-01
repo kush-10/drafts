@@ -3,7 +3,7 @@ import Carbon
 
 // Shared labels and bindings for local menu commands.
 enum LocalCommand: CaseIterable {
-    case newNote, copyAndClose, noteList, toggleExpansion
+    case newNote, copyAndClose, smartSearch, toggleExpansion
     case bold, italic, underline, bullets
     case undo, redo, cut, copy, paste, selectAll
     case settings, quit
@@ -12,7 +12,7 @@ enum LocalCommand: CaseIterable {
 
     var group: Group {
         switch self {
-        case .newNote, .copyAndClose, .noteList, .toggleExpansion: return .notes
+        case .newNote, .copyAndClose, .smartSearch, .toggleExpansion: return .notes
         case .bold, .italic, .underline, .bullets: return .formatting
         case .settings, .quit: return .app
         default: return .editing
@@ -33,8 +33,8 @@ enum LocalCommand: CaseIterable {
         case .copy: return "Copy"
         case .paste: return "Paste"
         case .selectAll: return "Select all"
-        case .noteList: return "Integrated note list"
-        case .toggleExpansion: return "Expand / restore notepad"
+        case .smartSearch: return "Search notes and topics"
+        case .toggleExpansion: return "Full screen / restore notepad"
         case .settings: return "Settings"
         case .quit: return "Quit Drafts"
         }
@@ -51,7 +51,7 @@ enum LocalCommand: CaseIterable {
         case .copy, .copyAndClose: return "c"
         case .paste: return "v"
         case .selectAll: return "a"
-        case .noteList: return "l"
+        case .smartSearch: return "k"
         case .toggleExpansion: return "f"
         case .settings: return ","
         case .quit: return "q"
@@ -62,7 +62,7 @@ enum LocalCommand: CaseIterable {
     var label: String { (modifiers.contains(.shift) ? "⇧⌘" : "⌘") + key.uppercased() }
 
     var shortcut: Shortcut {
-        let codes: [String: UInt32] = ["n": 45, "w": 13, "l": 37, "/": 44, "b": 11, "i": 34, "u": 32, "z": 6, "x": 7, "c": 8, "v": 9, "a": 0, "f": 3, ",": 43, "q": 12]
+        let codes: [String: UInt32] = ["n": 45, "s": 1, "w": 13, "l": 37, "k": 40, "/": 44, "b": 11, "i": 34, "u": 32, "z": 6, "x": 7, "c": 8, "v": 9, "a": 0, "f": 3, ",": 43, "q": 12]
         return Shortcut(keyCode: codes[key]!, modifiers: UInt32(cmdKey | (modifiers.contains(.shift) ? shiftKey : 0)), key: key.uppercased())
     }
 }

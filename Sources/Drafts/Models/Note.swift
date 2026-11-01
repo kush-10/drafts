@@ -49,8 +49,8 @@ struct Note: Codable, Identifiable, Equatable {
 }
 
 enum EditorStyle {
-    static let font = NSFont.systemFont(ofSize: 16)
-    static let textColor = NSColor(white: 0.88, alpha: 1)
+    static var font: NSFont { EditorTypography.shared.font }
+    static var textColor: NSColor { ThemePalette.native(DraftsTheme.palette.foreground) }
     static var attributes: [NSAttributedString.Key: Any] {
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = 5
@@ -63,7 +63,7 @@ enum EditorStyle {
     }
 
     static func adaptingToAppearance(_ content: NSAttributedString) -> NSAttributedString {
-        let result = NSMutableAttributedString(attributedString: content)
+        let result = NSMutableAttributedString(attributedString: EditorTypography.shared.adapting(content))
         result.addAttribute(.foregroundColor, value: textColor, range: NSRange(location: 0, length: result.length))
         return result
     }

@@ -1,10 +1,13 @@
 import AppKit
 import SwiftUI
+import Combine
 
 final class OverlayPanel: NSPanel {
     var onDismiss: (() -> Void)?
     var onNoteList: (() -> Void)?
     var onToggleExpansion: (() -> Void)?
+    var onSmartSearch: (() -> Void)?
+    var onSettings: (() -> Void)?
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
     override func performClose(_ sender: Any?) { onDismiss?() }
@@ -14,7 +17,8 @@ final class OverlayPanel: NSPanel {
         if flags == .command {
             switch event.charactersIgnoringModifiers?.lowercased() {
             case "f": if let action = onToggleExpansion { if !event.isARepeat { action() }; return true }
-            case "l": if let action = onNoteList { action(); return true }
+            case "k": if let action = onSmartSearch { action(); return true }
+            case ",": if let action = onSettings { action(); return true }
             default: break
             }
         }
@@ -28,40 +32,52 @@ private final class UtilityWindow: NSWindow {
 
 final class WindowCoordinator: NSObject, NSWindowDelegate {
     static let notepadSize = NSSize(width: 760, height: 500)
-    static let fullListSize = NSSize(width: 1000, height: 640)
     let store: NoteStore
     let preferences: PreferencesStore
     let hotKeys: HotKeyManager
     let workspace: WorkspaceState
     let editor = EditorBridge()
+    let intelligence: IntelligenceController
     private(set) var scratchpad: OverlayPanel?
-    private(set) var fullListWindow: NSWindow?
     private var settingsWindow: NSWindow?
     private var previousApplication: NSRunningApplication?
     private var frameBeforeExpansion: NSRect?
-    private var localMouseMonitor: Any?
-    private var globalMouseMonitor: Any?
-    private var activationObserver: NSObjectProtocol?
-    private var dismissalGeneration = 0
+    private var themeSubscription: AnyCancellable?
 
     init(store: NoteStore, preferences: PreferencesStore, hotKeys: HotKeyManager, workspace: WorkspaceState = WorkspaceState()) {
         self.store = store
         self.preferences = preferences
         self.hotKeys = hotKeys
         self.workspace = workspace
+        self.intelligence = IntelligenceController(store: store, preferences: preferences)
         super.init()
-        editor.onNoteList = { [weak self] in self?.showNotePicker() }
+        themeSubscription = ThemeController.shared.$palette.sink { [weak self] palette in
+            for window in [self?.scratchpad, self?.settingsWindow].compactMap({ $0 }) {
+                window.appearance = palette.appearance
+                if window !== self?.scratchpad { window.backgroundColor = ThemePalette.native(palette.background) }
+            }
+        }
+        editor.onNoteList = { [weak self] in self?.showFullList() }
+        editor.onSmartSearch = { [weak self] in self?.showSmartSearch() }
         editor.onToggleExpansion = { [weak self] in self?.toggleExpansion() }
         editor.onCopyAndClose = { [weak self] in _ = self?.copyAndClose() }
         editor.onSettings = { [weak self] in self?.showSettings() }
+        editor.availableTopics = { [weak self] in self?.intelligence.categories.organisationTopics ?? [] }
+        editor.onAssignTopic = { [weak self] noteID, topicID in
+            self?.intelligence.categories.setManual(topicID, noteID: noteID, included: true) ?? false
+        }
+        editor.onTopicAccepted = { [weak self] id in self?.intelligence.rememberManualTopics(id) }
+        editor.manualTopicLabels = { [weak self] id in self?.intelligence.categories.labels(for: id) ?? CategoryLabels() }
+        editor.onRestoreManualLabels = { [weak self] id, labels in self?.intelligence.categories.restoreManualLabels(labels, noteID: id) ?? false }
         if store.note(workspace.currentID)?.deletedAt != nil || store.note(workspace.currentID) == nil {
-            workspace.currentID = store.newestNote?.id
+            workspace.currentID = store.latestEditedNote?.id
         }
     }
 
     func newBlank() {
         guard let note = store.newDraft(preferredID: workspace.currentID) else { showStorageError(); return }
         workspace.closePicker()
+        workspace.tableVisible = false
         workspace.currentID = note.id
         showScratchpad()
     }
@@ -72,9 +88,9 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
     }
 
     func openNewestNote() {
-        // Explicit opening stays idempotent. Creation time, not edits or last selection, determines newest.
+        // Reopening follows actual content edits, not creation, selection or category metadata.
         guard store.flush() else { showStorageError(); return }
-        if let note = store.newestNote { open(note.id) }
+        if let note = store.latestEditedNote { open(note.id) }
         else { newBlank() }
     }
 
@@ -82,6 +98,7 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
         guard store.flush() else { showStorageError(); return }
         guard let note = store.note(id), note.deletedAt == nil else { return }
         workspace.currentID = id
+        workspace.tableVisible = false
         workspace.closePicker()
         scratchpad?.contentView?.layoutSubtreeIfNeeded()
         editor.load(note)
@@ -92,13 +109,15 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
         guard store.flush() else { showStorageError(); return }
         guard store.note(id)?.deletedAt == nil, store.note(id) != nil else { return }
         workspace.closePicker()
+        workspace.tableVisible = false
         workspace.currentID = id
         showScratchpad()
     }
 
     func hideScratchpad(restoreFocus: Bool = true) {
+        guard scratchpad?.attachedSheet == nil else { return }
         guard store.flush() else { showStorageError(); return }
-        stopDismissalMonitoring()
+        rememberWindow()
         workspace.closePicker()
         scratchpad?.orderOut(nil)
         runCleanup()
@@ -120,63 +139,29 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
         panel.invalidateShadow()
     }
 
-    // Passive dismissal must never activate the app the user just left.
-    func dismissForExternalInteraction() {
-        guard scratchpad?.isVisible == true, scratchpad?.attachedSheet == nil else { return }
-        hideScratchpad(restoreFocus: false)
+    // Focus changes are deliberately passive. Only explicit commands hide the notepad.
+    func dismissForExternalInteraction() {}
+    func handleMouseDown(in window: NSWindow?) {}
+    func handleApplicationActivation(processIdentifier: pid_t) {}
+    func windowDidResignKey(_ notification: Notification) {}
+
+    func rememberWindow() {
+        guard let panel = scratchpad, panel.isVisible else { return }
+        workspace.rememberWindow(frame: panel.frame, expanded: workspace.notepadExpanded, restoreFrame: frameBeforeExpansion)
     }
 
-    func handleMouseDown(in window: NSWindow?) {
-        guard window !== scratchpad, window?.parent !== scratchpad else { return }
-        dismissForExternalInteraction()
+    func windowDidResize(_ notification: Notification) {
+        guard let panel = notification.object as? NSWindow, panel === scratchpad,
+              workspace.notepadExpanded, let visible = panel.screen?.visibleFrame,
+              panel.frame.size != visible.size else { return }
+        // A manual resize exits expanded mode and becomes the size to remember.
+        workspace.notepadExpanded = false
+        frameBeforeExpansion = nil
     }
-
-    func handleApplicationActivation(processIdentifier: pid_t) {
-        guard processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
-        dismissForExternalInteraction()
-    }
-
-    func windowDidResignKey(_ notification: Notification) {
-        guard notification.object as? NSWindow === scratchpad else { return }
-        let generation = dismissalGeneration
-        // Sheets and same-window picker focus changes must not close the draft.
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.dismissalGeneration == generation, self.scratchpad?.isKeyWindow != true else { return }
-            self.dismissForExternalInteraction()
-        }
-    }
-
-    private func startDismissalMonitoring() {
-        stopDismissalMonitoring()
-        let clicks: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
-        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: clicks) { [weak self] event in
-            self?.handleMouseDown(in: event.window)
-            return event // Do not swallow the click intended for another window.
-        }
-        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: clicks) { [weak self] _ in
-            self?.dismissForExternalInteraction()
-        }
-        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] notification in
-            guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
-            self?.handleApplicationActivation(processIdentifier: app.processIdentifier)
-        }
-    }
-
-    private func stopDismissalMonitoring() {
-        dismissalGeneration += 1
-        if let localMouseMonitor { NSEvent.removeMonitor(localMouseMonitor) }
-        if let globalMouseMonitor { NSEvent.removeMonitor(globalMouseMonitor) }
-        if let activationObserver { NSWorkspace.shared.notificationCenter.removeObserver(activationObserver) }
-        localMouseMonitor = nil
-        globalMouseMonitor = nil
-        activationObserver = nil
-    }
-
-    deinit { stopDismissalMonitoring() }
 
     @discardableResult
     func copyAndClose(to pasteboard: NSPasteboard = .general) -> Bool {
-        guard scratchpad?.isVisible == true, let note = store.note(workspace.currentID), note.deletedAt == nil else { return false }
+        guard scratchpad?.isVisible == true, !workspace.tableVisible, let note = store.note(workspace.currentID), note.deletedAt == nil else { return false }
         guard store.flush() else { showStorageError(); return false }
         pasteboard.clearContents()
         guard pasteboard.setString(note.text, forType: .string) else {
@@ -191,17 +176,37 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
     }
 
     func showNotePicker() {
-        guard scratchpad?.isVisible == true else { return }
-        guard store.flush() else { showStorageError(); return }
-        if !workspace.pickerVisible { workspace.pickerQuery = "" }
-        workspace.pickerVisible = true
-        scratchpad?.contentView?.layoutSubtreeIfNeeded()
+        showSmartSearch()
     }
 
     func dismissNotePicker() {
         workspace.closePicker()
         scratchpad?.contentView?.layoutSubtreeIfNeeded()
-        editor.focus()
+        if !workspace.tableVisible { editor.focus() }
+    }
+
+    func showSmartSearch() {
+        guard scratchpad?.isVisible == true else { return }
+        guard store.flush() else { showStorageError(); return }
+        if !workspace.pickerVisible { workspace.pickerQuery = "" }
+        workspace.smartPicker = true
+        workspace.pickerVisible = true
+        workspace.searchFocusRequest += 1
+        scratchpad?.contentView?.layoutSubtreeIfNeeded()
+    }
+
+    func showGlobalSearch() {
+        guard scratchpad?.attachedSheet == nil, settingsWindow?.attachedSheet == nil else { return }
+        guard store.flush() else { showStorageError(); return }
+        rememberExternalApplication()
+        if scratchpad?.isVisible != true {
+            if store.note(workspace.currentID) == nil || store.note(workspace.currentID)?.deletedAt != nil {
+                workspace.currentID = store.latestEditedNote?.id
+            }
+            // Search is navigation, not New Note: an empty collection stays empty.
+            showScratchpad()
+        } else { scratchpad?.makeKeyAndOrderFront(nil) }
+        showSmartSearch()
     }
 
     func cancelNotepad() {
@@ -213,22 +218,23 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
         guard store.flush() else { showStorageError(); return }
         store.trash(id)
         if workspace.currentID == id {
-            workspace.currentID = store.newestNote?.id
-            if let note = store.newestNote { editor.load(note) }
-            else { stopDismissalMonitoring(); scratchpad?.orderOut(nil) }
+            workspace.currentID = store.latestEditedNote?.id
+            if let note = store.latestEditedNote { editor.load(note) }
+            else { rememberWindow(); scratchpad?.orderOut(nil) }
         }
     }
 
     private func showScratchpad() {
         rememberExternalApplication()
-        let comingFromTable = fullListWindow?.isVisible == true
+        let comingFromTable = workspace.tableVisible
+        if comingFromTable { workspace.tableEditingID = nil }
         let wasHidden = scratchpad?.isVisible != true
-        fullListWindow?.orderOut(nil)
         settingsWindow?.orderOut(nil)
         if scratchpad == nil {
-            let panel = OverlayPanel(contentRect: NSRect(origin: .zero, size: Self.notepadSize), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            let panel = OverlayPanel(contentRect: NSRect(origin: .zero, size: Self.notepadSize), styleMask: [.borderless, .nonactivatingPanel, .resizable], backing: .buffered, defer: false)
+            panel.contentMinSize = NSSize(width: 640, height: 380)
             panel.title = "Drafts — Notepad"
-            panel.appearance = NSAppearance(named: .darkAqua)
+            panel.appearance = DraftsTheme.palette.appearance
             panel.isOpaque = false
             panel.backgroundColor = .clear
             panel.hasShadow = true
@@ -238,34 +244,33 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
             panel.isMovableByWindowBackground = true
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.onDismiss = { [weak self] in self?.cancelNotepad() }
-            panel.onNoteList = { [weak self] in self?.showNotePicker() }
+            panel.onNoteList = { [weak self] in self?.showFullList() }
             panel.onToggleExpansion = { [weak self] in self?.toggleExpansion() }
+            panel.onSmartSearch = { [weak self] in self?.showSmartSearch() }
+            panel.onSettings = { [weak self] in self?.showSettings() }
             panel.delegate = self
             panel.contentView = hostingView(ScratchpadView(
                 store: store, workspace: workspace, preferences: preferences, editor: editor,
                 onSelect: { [weak self] id in self?.selectNote(id) },
-                onNoteList: { [weak self] in self?.showNotePicker() },
+                onNoteList: { [weak self] in self?.showFullList() },
                 onDismissPicker: { [weak self] in self?.dismissNotePicker() },
                 onHide: { [weak self] in self?.hideScratchpad() },
                 onNew: { [weak self] in self?.newBlank() },
                 onCopyAndClose: { [weak self] in _ = self?.copyAndClose() },
-                onToggleExpansion: { [weak self] in self?.toggleExpansion() }
+                onToggleExpansion: { [weak self] in self?.toggleExpansion() }, intelligence: intelligence
             ), rounded: true)
             scratchpad = panel
         }
         scratchpad?.level = preferences.value.keepOnTop ? .floating : .normal
-        frameBeforeExpansion = nil
-        workspace.notepadExpanded = false
-        position(scratchpad, size: Self.notepadSize)
+        if wasHidden { restoreWindowSize() }
         scratchpad?.contentView?.layoutSubtreeIfNeeded()
-        if let note = store.note(workspace.currentID) { editor.load(note, force: comingFromTable || wasHidden) }
+        if !workspace.tableVisible, let note = store.note(workspace.currentID) { editor.load(note, force: comingFromTable || wasHidden) }
         scratchpad?.makeKeyAndOrderFront(nil)
-        startDismissalMonitoring()
-        editor.focus()
+        if !workspace.tableVisible { editor.focus() }
         scratchpad?.invalidateShadow()
         let id = workspace.currentID
         DispatchQueue.main.async { [weak self] in
-            guard let self, self.workspace.currentID == id, self.scratchpad?.isKeyWindow == true, !self.workspace.pickerVisible else { return }
+            guard let self, self.workspace.currentID == id, self.scratchpad?.isKeyWindow == true, !self.workspace.pickerVisible, !self.workspace.tableVisible else { return }
             self.editor.focus()
         }
     }
@@ -273,36 +278,24 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
     func showFullList() {
         guard store.flush() else { showStorageError(); return }
         rememberExternalApplication()
-        stopDismissalMonitoring()
+        workspace.tableEditingID = nil
         workspace.closePicker()
-        scratchpad?.orderOut(nil)
-        settingsWindow?.orderOut(nil)
-        if fullListWindow == nil { fullListWindow = regularWindow(title: "Drafts — Full list", size: Self.fullListSize) }
-        // Start with the whole table on each opening, not a stale editor or filter.
-        fullListWindow?.contentView = hostingView(FullListView(
-            store: store, workspace: workspace,
-            onOpen: { [weak self] id in self?.open(id) },
-            onNew: { [weak self] in self?.newBlank() },
-            onSettings: { [weak self] in self?.showSettings() },
-            onTrash: { [weak self] id in self?.trash(id) }
-        ))
-        position(fullListWindow, size: Self.fullListSize)
-        NSApp.activate(ignoringOtherApps: true)
-        fullListWindow?.makeKeyAndOrderFront(nil)
+        workspace.tableVisible = true
+        showScratchpad()
     }
 
     func showSettings() {
         guard store.flush() else { showStorageError(); return }
-        stopDismissalMonitoring()
+        if scratchpad?.isVisible == true { hideScratchpad(restoreFocus: false) }
         workspace.closePicker()
         scratchpad?.orderOut(nil)
-        fullListWindow?.orderOut(nil)
         if settingsWindow == nil {
-            let window = regularWindow(title: "Drafts — Settings", size: NSSize(width: 520, height: 600))
-            window.contentView = hostingView(SettingsView(preferences: preferences, hotKeys: hotKeys, store: store))
+            let window = regularWindow(title: "Drafts — Settings", size: NSSize(width: 820, height: 640))
+            window.contentView = hostingView(SettingsView(preferences: preferences, hotKeys: hotKeys, store: store, intelligence: intelligence,
+                                                         initialPage: hotKeys.error == nil ? .general : .shortcuts))
             settingsWindow = window
         }
-        position(settingsWindow, size: NSSize(width: 520, height: 600))
+        position(settingsWindow, size: NSSize(width: 820, height: 640))
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
     }
@@ -310,10 +303,9 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
     func runCleanup() {
         // Do not apply a partially edited retention interval while Settings is open.
         guard settingsWindow?.isVisible != true else { return }
-        let tableEditor = fullListWindow?.isVisible == true ? (fullListWindow?.firstResponder as? DraftsTextView)?.editorBridge?.noteID : nil
-        let editingID = scratchpad?.isVisible == true ? workspace.currentID : tableEditor
+        let editingID = scratchpad?.isVisible == true && !workspace.tableVisible ? workspace.currentID : nil
         store.cleanup(preferences: preferences.value, excluding: editingID)
-        if store.note(workspace.currentID) == nil { workspace.currentID = store.newestNote?.id }
+        if store.note(workspace.currentID) == nil { workspace.currentID = store.latestEditedNote?.id }
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -325,8 +317,8 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
     private func regularWindow(title: String, size: NSSize) -> NSWindow {
         let window = UtilityWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
         window.title = title
-        window.appearance = NSAppearance(named: .darkAqua)
-        window.backgroundColor = NSColor(white: 0.09, alpha: 1)
+        window.appearance = DraftsTheme.palette.appearance
+        window.backgroundColor = ThemePalette.native(DraftsTheme.palette.background)
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.delegate = self
@@ -334,7 +326,7 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
     }
 
     private func hostingView<V: View>(_ view: V, rounded: Bool = false) -> NSView {
-        let host = NSHostingView(rootView: view.environment(\.colorScheme, .dark).tint(DraftsTheme.accent))
+        let host = NSHostingView(rootView: ThemedRoot(content: view))
         if rounded {
             host.wantsLayer = true
             host.layer?.cornerRadius = DraftsTheme.cornerRadius
@@ -356,12 +348,29 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
         window.setFrame(window.frameRect(forContentRect: contentFrame), display: true)
     }
 
+    private func restoreWindowSize() {
+        let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
+        guard let panel = scratchpad, let visible = screen?.visibleFrame else { return }
+        let saved = workspace.rememberedWindow(minutes: preferences.value.sizeMemoryMinutes)
+        func frame(_ width: Double, _ height: Double) -> NSRect {
+            Self.defaultFrame(size: NSSize(width: min(max(640, width), visible.width), height: min(max(380, height), visible.height)), visibleFrame: visible)
+        }
+        workspace.notepadExpanded = saved?.expanded ?? false
+        if let saved, saved.expanded {
+            frameBeforeExpansion = frame(saved.restoreWidth, saved.restoreHeight)
+            panel.setFrame(visible, display: true)
+        } else {
+            frameBeforeExpansion = nil
+            panel.setFrame(frame(saved?.width ?? Self.notepadSize.width, saved?.height ?? Self.notepadSize.height), display: true)
+        }
+    }
+
     private func rememberExternalApplication() {
         if let app = NSWorkspace.shared.frontmostApplication, app.processIdentifier != ProcessInfo.processInfo.processIdentifier { previousApplication = app }
     }
 
     private func returnFocus() {
-        if NSApp.isActive, fullListWindow?.isVisible != true, settingsWindow?.isVisible != true { previousApplication?.activate(options: []) }
+        if NSApp.isActive, settingsWindow?.isVisible != true { previousApplication?.activate(options: []) }
     }
 
     private func showStorageError() {

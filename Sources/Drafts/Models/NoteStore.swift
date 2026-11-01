@@ -5,6 +5,10 @@ final class NoteStore: ObservableObject {
     @Published private(set) var notes: [Note] = []
     @Published var lastError: String?
     @Published private(set) var pendingCount = 0
+    // Emitted only after a content write succeeds, never for metadata-only mutations.
+    let didSaveContent = PassthroughSubject<Note, Never>()
+    let willEditContent = PassthroughSubject<UUID, Never>()
+    func hasPendingChanges(_ id: UUID) -> Bool { pending.contains(id) }
     let directory: URL
     private var pending = Set<UUID>()
     private var pendingContent: [UUID: NSAttributedString] = [:]
@@ -37,6 +41,13 @@ final class NoteStore: ObservableObject {
         activeNotes.sorted { $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt > $1.createdAt }
     }
     var newestNote: Note? { notesByCreation.first }
+    var latestEditedNote: Note? {
+        activeNotes.sorted {
+            if $0.updatedAt != $1.updatedAt { return $0.updatedAt > $1.updatedAt }
+            if $0.createdAt != $1.createdAt { return $0.createdAt > $1.createdAt }
+            return $0.id.uuidString < $1.id.uuidString
+        }.first
+    }
     var trashedNotes: [Note] { notes.filter { $0.deletedAt != nil }.sorted { ($0.deletedAt ?? .distantPast) > ($1.deletedAt ?? .distantPast) } }
 
     func note(_ id: UUID?) -> Note? { notes.first { $0.id == id } }
@@ -48,6 +59,7 @@ final class NoteStore: ObservableObject {
             // Persist before opening so even a newly created, empty note exists on disk.
             try write(note)
             notes.insert(note, at: 0)
+            if !note.isBlank { didSaveContent.send(note) }
             return note
         } catch { report(error); return nil }
     }
@@ -62,6 +74,7 @@ final class NoteStore: ObservableObject {
 
     func update(_ id: UUID, content: NSAttributedString, now: Date = Date()) {
         guard let index = notes.firstIndex(where: { $0.id == id && $0.deletedAt == nil }) else { return }
+        willEditContent.send(id)
         // Keep an immutable in-memory copy; serialize attachments only when the debounce fires.
         // A failed encode or write remains pending rather than silently losing the edit.
         pendingContent[id] = NSAttributedString(attributedString: content)
@@ -110,11 +123,13 @@ final class NoteStore: ObservableObject {
         for id in Array(pending) {
             guard var note = note(id) else { pending.remove(id); pendingContent.removeValue(forKey: id); continue }
             do {
+                let contentChanged = pendingContent[id] != nil
                 if let content = pendingContent[id] { note.richText = try Note.encode(content) }
                 try write(note)
                 if let index = notes.firstIndex(where: { $0.id == id }) { notes[index] = note }
                 pending.remove(id)
                 pendingContent.removeValue(forKey: id)
+                if contentChanged { didSaveContent.send(note) }
             }
             catch { report(error) }
         }

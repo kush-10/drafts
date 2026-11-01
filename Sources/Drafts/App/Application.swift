@@ -4,6 +4,14 @@ import Combine
 @main
 enum DraftsApplication {
     static func main() {
+        if ProcessInfo.processInfo.arguments.contains("--configure-topics") {
+            let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("Drafts/Notes/.drafts", isDirectory: true)
+            let topics = CategoryStore(directory: directory)
+            guard topics.configureFixedTopics() else { fputs("Couldn’t configure topics; original metadata was preserved.\n", stderr); exit(1) }
+            print("Five fixed topics configured. Note text and manual assignments were preserved.")
+            return
+        }
         let app = NSApplication.shared
         app.appearance = NSAppearance(named: .darkAqua)
         let delegate = AppDelegate()
@@ -28,11 +36,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         installStatusItem()
         hotKeys.onOpen = { [weak self] in self?.windows.toggleScratchpad() }
         hotKeys.onList = { [weak self] in self?.windows.showFullList() }
+        hotKeys.onSearch = { [weak self] in self?.windows.showGlobalSearch() }
         preferences.$value.sink { [weak self] value in
             self?.hotKeys.register(value)
             self?.statusItem?.isVisible = !value.hideMenuBarIcon || self?.hotKeys.error != nil
             // @Published emits before assignment; use the emitted value for immediate window updates.
             self?.windows.scratchpad?.level = value.keepOnTop ? .floating : .normal
+        }.store(in: &subscriptions)
+        hotKeys.$error.sink { [weak self] error in
+            guard let self else { return }
+            self.statusItem?.isVisible = !self.preferences.value.hideMenuBarIcon || error != nil
         }.store(in: &subscriptions)
         windows.runCleanup()
         cleanupTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in self?.windows.runCleanup() }
@@ -50,14 +63,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard !store.flush() else { return .terminateNow }
+        windows.rememberWindow()
+        if store.flush() { windows.intelligence.shutdown(); return .terminateNow }
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = "Some changes haven’t been saved"
         alert.informativeText = (store.lastError ?? "Check available disk space and try again.") + " Quitting now will lose unsaved changes."
         alert.addButton(withTitle: "Keep Drafts Open")
         alert.addButton(withTitle: "Quit Without Saving")
-        return alert.runModal() == .alertSecondButtonReturn ? .terminateNow : .terminateCancel
+        if alert.runModal() == .alertSecondButtonReturn { windows.intelligence.shutdown(); return .terminateNow }
+        return .terminateCancel
     }
 
     private func installStatusItem() {
@@ -67,8 +82,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         let menu = NSMenu()
         menu.addItem(item("Open Note", #selector(openNote)))
         menu.addItem(item("New Blank Note", #selector(newNote)))
+        menu.addItem(item("Search Notes…", #selector(globalSearch)))
         menu.addItem(.separator())
-        menu.addItem(item("Full List Editor…", #selector(fullList)))
+        menu.addItem(item("All Notes…", #selector(fullList)))
         menu.addItem(item("Settings…", #selector(settings)))
         menu.addItem(.separator())
         menu.addItem(item("Quit Drafts", #selector(quit)))
@@ -76,11 +92,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        if menuItem.action == #selector(findNotes) || menuItem.action == #selector(toggleExpansion) {
+        if menuItem.action == #selector(smartSearch) || menuItem.action == #selector(toggleExpansion) {
             return NSApp.keyWindow === windows?.scratchpad && windows?.scratchpad?.isVisible == true
         }
         if menuItem.action == #selector(copyAndClose) {
             return NSApp.keyWindow === windows?.scratchpad && windows?.scratchpad?.isVisible == true
+                && windows?.workspace.tableVisible == false
                 && store.note(windows?.workspace.currentID)?.deletedAt == nil && store.note(windows?.workspace.currentID) != nil
         }
         let editorActions: [Selector] = [#selector(bold), #selector(italic), #selector(underline), #selector(bulletList)]
@@ -106,7 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         file.addItem(command(.copyAndClose, action: #selector(copyAndClose)))
         file.addItem(command(.toggleExpansion, action: #selector(toggleExpansion)))
         file.addItem(.separator())
-        file.addItem(item("Full List Editor…", #selector(fullList)))
+        file.addItem(item("All Notes…", #selector(fullList)))
         file.addItem(item("Close Window", #selector(closeWindow), key: "w"))
         addMenu(file, title: "File", to: main)
 
@@ -124,8 +141,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
             edit.addItem(entry)
         }
         edit.addItem(.separator())
-        let find = command(.noteList, action: #selector(findNotes))
-        edit.addItem(find)
+        edit.addItem(command(.smartSearch, action: #selector(smartSearch)))
         addMenu(edit, title: "Edit", to: main)
 
         let format = NSMenu(title: "Format")
@@ -158,7 +174,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     @objc private func newNote() { windows.newBlank() }
     @objc private func copyAndClose() { windows.copyAndClose() }
     @objc private func fullList() { windows.showFullList() }
-    @objc private func findNotes() { windows.showNotePicker() }
+    @objc private func smartSearch() { windows.showSmartSearch() }
+    @objc private func globalSearch() { windows.showGlobalSearch() }
     @objc private func toggleExpansion() { windows.toggleExpansion() }
     @objc private func settings() { windows.showSettings() }
     @objc private func quit() { NSApp.terminate(nil) }

@@ -38,7 +38,7 @@ struct NotePickerView: View {
                                             .font(.system(size: 10)).foregroundStyle(DraftsTheme.secondary)
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading).padding(12)
-                                    .background(selectedID == note.id ? Color.white.opacity(0.07) : .clear, in: RoundedRectangle(cornerRadius: 6))
+                                    .background(selectedID == note.id ? DraftsTheme.accent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 6))
                                     .contentShape(Rectangle())
                                 }.buttonStyle(.plain).focusable(false).id(note.id)
                             }
@@ -76,11 +76,14 @@ struct NotePickerView: View {
 }
 
 // A native field delegate handles arrows/Return/Escape before the field editor consumes them.
-private struct PickerSearchField: NSViewRepresentable {
+struct PickerSearchField: NSViewRepresentable {
     @Binding var query: String
     let onMove: (Int) -> Void
     let onSubmit: () -> Void
     let onDismiss: () -> Void
+    var placeholder = "Search notes"
+    var focusRequest = 0
+    var onComplete: (() -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -93,7 +96,7 @@ private struct PickerSearchField: NSViewRepresentable {
         field.focusRingType = .none
         field.font = .systemFont(ofSize: 16)
         field.textColor = EditorStyle.textColor
-        field.placeholderString = "Search notes"
+        field.placeholderString = placeholder
         field.setAccessibilityLabel("Search saved notes")
         field.delegate = context.coordinator
         return field
@@ -101,7 +104,13 @@ private struct PickerSearchField: NSViewRepresentable {
 
     func updateNSView(_ field: NoteSearchField, context: Context) {
         context.coordinator.parent = self
+        field.textColor = EditorStyle.textColor
+        field.placeholderString = placeholder
         if field.stringValue != query { field.stringValue = query }
+        if field.focusRequest != focusRequest {
+            field.focusRequest = focusRequest
+            field.requestFocus(selectAll: false)
+        }
     }
 
     final class Coordinator: NSObject, NSTextFieldDelegate {
@@ -116,7 +125,8 @@ private struct PickerSearchField: NSViewRepresentable {
             case "moveUp:": parent.onMove(-1)
             case "insertNewline:": parent.onSubmit()
             case "cancelOperation:": parent.onDismiss()
-            case "insertTab:", "insertBacktab:": break // Keep focus in the modal picker.
+            case "insertTab:": parent.onComplete?()
+            case "insertBacktab:": break // Keep focus in the modal picker.
             default: return false
             }
             return true
@@ -125,12 +135,21 @@ private struct PickerSearchField: NSViewRepresentable {
 }
 
 final class NoteSearchField: NSTextField {
+    var focusRequest = 0
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        requestFocus(selectAll: true)
+    }
+
+    func requestFocus(selectAll: Bool) {
         guard let window else { return }
         DispatchQueue.main.async { [weak self, weak window] in
             guard let self, let window, self.window === window, window.isVisible else { return }
-            if window.makeFirstResponder(self) { self.selectText(nil) }
+            if let editor = self.currentEditor(), window.firstResponder === editor {
+                if selectAll { self.selectText(nil) }
+                return
+            }
+            if window.makeFirstResponder(self), selectAll { self.selectText(nil) }
         }
     }
 }

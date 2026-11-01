@@ -25,7 +25,7 @@ for artifact in "$NAME.dmg" "$NAME.zip" SHA256SUMS.txt release-info.json; do
     fi
 done
 
-# This unique build directory keeps packaging separate from any running dist/Drafts.app.
+# Explicit staging keeps release packaging separate from the installed app.
 STAGING="$(mktemp -d "$ROOT/dist/.package-$VERSION.XXXXXX")"
 trap 'rm -rf -- "$STAGING"' EXIT
 APP_OUTPUT_DIR="$STAGING/build" UNIVERSAL=1 "$ROOT/scripts/build-app.sh" release

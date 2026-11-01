@@ -1,17 +1,18 @@
 import SwiftUI
 
 enum DraftsTheme {
-    static let accent = Color(white: 0.7)
-    static let text = Color(white: 0.88)
-    static let secondary = Color(white: 0.52)
-    static let surface = Color(white: 0.09)
+    static var palette: ThemePalette { ThemeController.shared.palette }
+    static var accent: Color { Color(nsColor: ThemePalette.native(palette.highlight)) }
+    static var text: Color { Color(nsColor: ThemePalette.native(palette.foreground)) }
+    static var secondary: Color { Color(nsColor: ThemePalette.native(palette.muted)) }
+    static var surface: Color { Color(nsColor: ThemePalette.native(palette.background)) }
     static let cornerRadius: CGFloat = 14
 }
 
 struct GlassBackground: View {
     var body: some View {
         VisualEffectBackground()
-            .overlay(Color.black.opacity(0.68))
+            .overlay(DraftsTheme.surface.opacity(DraftsTheme.palette.id == "charcoal" ? 0.85 : 0.97))
             .allowsHitTesting(false)
     }
 }
@@ -20,7 +21,7 @@ private struct VisualEffectBackground: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.material = .hudWindow
-        view.appearance = NSAppearance(named: .darkAqua)
+        view.appearance = DraftsTheme.palette.appearance
         view.blendingMode = .behindWindow
         view.state = .active
         view.wantsLayer = true
@@ -29,7 +30,7 @@ private struct VisualEffectBackground: NSViewRepresentable {
         view.layer?.masksToBounds = true
         return view
     }
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) { nsView.appearance = DraftsTheme.palette.appearance }
 }
 
 struct KeyCap: View {

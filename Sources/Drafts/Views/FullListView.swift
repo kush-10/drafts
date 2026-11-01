@@ -1,107 +1,114 @@
 import SwiftUI
 
 struct FullListView: View {
-    enum Scope: String, CaseIterable { case all = "All", trash = "Trash" }
     @ObservedObject var store: NoteStore
     @ObservedObject var workspace: WorkspaceState
     let onOpen: (UUID) -> Void
     let onNew: () -> Void
-    let onSettings: () -> Void
-    let onTrash: (UUID) -> Void
-    @StateObject private var editor = EditorBridge()
-    @State private var scope: Scope = .all
-    @State private var query = ""
-    @State private var selection: UUID?
-    @State private var sortOrder = [KeyPathComparator(\Note.createdAt, order: .reverse)]
+    let onBack: () -> Void
+    @ObservedObject var categories: CategoryStore
+    var intelligence: IntelligenceController? = nil
+    var showsNavigation = true
+    @State private var sortOrder = [KeyPathComparator(\Note.updatedAt, order: .reverse)]
     @State private var confirmDeletion = false
 
     private var rows: [Note] {
-        let source = scope == .trash ? store.trashedNotes : store.activeNotes
-        return source.filter {
-            $0.matches(query)
-        }.sorted(using: sortOrder)
+        NotesFilter.rows(store: store, categories: categories, query: workspace.tableQuery,
+                         trash: workspace.tableTrash, topic: workspace.tableTopic).sorted(using: sortOrder)
     }
-
-    private var selectedNote: Note? { store.note(selection) }
-    private var selectionBinding: Binding<UUID?> {
-        Binding(get: { selection }, set: { id in
-            guard store.flush() else { return }
-            selection = id
-            if let note = store.note(id), note.deletedAt == nil { workspace.currentID = id; editor.load(note) }
-        })
-    }
+    private var selectedIDs: Set<UUID> { workspace.tableSelection.intersection(Set(rows.map(\.id))) }
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 18) {
-                Text("All notes").font(.system(size: 16, weight: .medium))
-                Spacer(minLength: 0)
-                TextField("Search notes", text: $query).textFieldStyle(.roundedBorder).frame(width: 240)
-                Picker("Notes", selection: $scope) {
-                    ForEach(Scope.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }.pickerStyle(.segmented).labelsHidden().frame(width: 170)
-            }.padding(20)
-
-            VSplitView {
-                Table(rows, selection: selectionBinding, sortOrder: $sortOrder) {
-                    TableColumn("Note", value: \.title) { note in Text(note.title).lineLimit(1) }.width(min: 200, ideal: 300)
-                    TableColumn("Created", value: \.createdAt) { note in
-                        Text(note.createdAt.formatted(date: .abbreviated, time: .shortened))
-                    }.width(min: 140, ideal: 155)
-                    TableColumn("Edited", value: \.updatedAt) { note in
-                        Text(note.updatedAt.formatted(date: .abbreviated, time: .shortened))
-                    }.width(min: 140, ideal: 155)
-                }
-                .contextMenu(forSelectionType: UUID.self) { ids in
-                    if let id = ids.first {
-                        if scope == .trash { Button("Restore") { store.restore(id) } }
-                        else {
-                            Button("Open in notepad") { onOpen(id) }
-                            Button("Move to Trash") { onTrash(id); selection = nil }
-                        }
-                    }
-                } primaryAction: { ids in if let id = ids.first, scope != .trash { onOpen(id) } }
-                .onDeleteCommand { deleteSelected() }
-                .frame(minHeight: 180)
-
-                if let note = selectedNote {
-                    VStack(spacing: 0) {
-                        HStack {
-                            Text(note.deletedAt == nil ? "Edit note" : "In Trash")
-                                .foregroundStyle(DraftsTheme.secondary)
-                            Spacer()
-                            if note.deletedAt == nil { Button("Open in notepad") { onOpen(note.id) } }
-                            else { Button("Restore") { store.restore(note.id); selection = nil } }
-                        }.font(.system(size: 11)).buttonStyle(.plain).padding(.horizontal, 20).padding(.vertical, 10)
-                        if note.deletedAt == nil {
-                            RichEditor(note: note, bridge: editor) { id, content in store.update(id, content: content) }
-                        } else { RichPreview(note: note) }
-                    }.frame(minHeight: 160, idealHeight: 210, maxHeight: 280)
-                }
-            }
-            HStack(spacing: 20) {
-                Text("\(rows.count) notes").foregroundStyle(DraftsTheme.secondary)
+            HStack(spacing: 14) {
+                if showsNavigation { Button(action: onBack) { Label("Editor", systemImage: "chevron.left") }.buttonStyle(.plain) }
+                Spacer(minLength: 8)
+                TextField("Search notes and topics", text: $workspace.tableQuery).textFieldStyle(.roundedBorder).frame(maxWidth: 260)
+                Button("New note", action: onNew).buttonStyle(.plain)
+            }.padding(16)
+            HStack {
+                Picker("Notes", selection: $workspace.tableTrash) { Text("All notes").tag(false); Text("Trash").tag(true) }
+                    .pickerStyle(.segmented).labelsHidden().frame(width: 170)
+                Picker("Topic", selection: $workspace.tableTopic) {
+                    Text("All topics").tag(nil as UUID?)
+                    ForEach(categories.categories) { Text($0.name).tag(Optional($0.id)) }
+                }.frame(maxWidth: 230)
                 Spacer()
-                if selection != nil {
-                    Button(scope == .trash ? "Delete permanently…" : "Move to Trash", action: deleteSelected)
+                Text("⌘/⇧ click to select multiple").font(.system(size: 10)).foregroundStyle(DraftsTheme.secondary)
+            }.padding(.horizontal, 16).padding(.bottom, 12)
+            if let intelligence, !workspace.tableTrash {
+                OrganisationControls(intelligence: intelligence).padding(.horizontal, 16).padding(.bottom, 12)
+            }
+            Table(rows, selection: $workspace.tableSelection, sortOrder: $sortOrder) {
+                TableColumn("Note", value: \.title) { note in Text(note.title).lineLimit(1) }.width(min: 150, ideal: 300)
+                TableColumn("Topics") { note in Text(categories.names(for: note.id)).lineLimit(1) }.width(min: 80, ideal: 160)
+                TableColumn("Edited", value: \.updatedAt) { note in Text(note.updatedAt.formatted(date: .abbreviated, time: .shortened)) }.width(min: 110, ideal: 150)
+            }
+            .contextMenu(forSelectionType: UUID.self) { ids in
+                if !ids.isEmpty {
+                    if !workspace.tableTrash, ids.count == 1, let id = ids.first { Button("Open note") { onOpen(id) } }
+                    Button(workspace.tableTrash ? "Restore selected" : "Move selected to Trash") { mutate(ids, restore: workspace.tableTrash) }
                 }
-                Button("New note  ⌘N", action: onNew)
-                Button("Settings", action: onSettings)
+            } primaryAction: { ids in if !workspace.tableTrash, ids.count == 1, let id = ids.first { onOpen(id) } }
+            .onDeleteCommand { deleteSelected() }
+            HStack(spacing: 18) {
+                Text(selectedIDs.isEmpty ? "\(rows.count) notes" : "\(selectedIDs.count) selected")
+                    .foregroundStyle(DraftsTheme.secondary)
+                Spacer()
+                if !selectedIDs.isEmpty {
+                    if workspace.tableTrash {
+                        Button("Restore") { mutate(selectedIDs, restore: true) }
+                        Button("Delete permanently…") { confirmDeletion = true }
+                    } else {
+                        Menu("Topics") {
+                            ForEach(categories.categories) { category in
+                                Button("Add \(category.name)") { selectedIDs.forEach { categories.setManual(category.id, noteID: $0, included: true) } }
+                                Button("Remove \(category.name)") { selectedIDs.forEach { categories.setManual(category.id, noteID: $0, included: false) } }
+                            }
+                            Divider()
+                            Button("Use automatic topics") { selectedIDs.forEach { categories.useAutomatic(noteID: $0) } }
+                        }
+                        Button("Move to Trash") { mutate(selectedIDs, restore: false) }
+                        if selectedIDs.count == 1, let id = selectedIDs.first { Button("Open") { onOpen(id) } }
+                    }
+                }
             }.buttonStyle(.plain).font(.system(size: 11)).padding(16)
-            SaveErrorBanner(store: store)
         }
-        .font(.system(size: 12)).foregroundStyle(DraftsTheme.text)
-        .background(DraftsTheme.surface).tint(DraftsTheme.accent).environment(\.colorScheme, .dark)
-        .onChange(of: scope) { _, _ in if store.flush() { selection = nil } }
-        .alert("Permanently delete this note?", isPresented: $confirmDeletion) {
-            Button("Delete permanently", role: .destructive) { if let id = selection { store.deletePermanently(id); selection = nil } }
+        .foregroundStyle(DraftsTheme.text).background(DraftsTheme.surface).tint(DraftsTheme.accent)
+        .onChange(of: workspace.tableTrash) { _, _ in workspace.tableSelection = [] }
+        .onChange(of: rows.map(\.id)) { _, ids in workspace.tableSelection.formIntersection(Set(ids)) }
+        .alert("Permanently delete \(selectedIDs.count) selected notes?", isPresented: $confirmDeletion) {
+            Button("Delete permanently", role: .destructive) {
+                guard store.flush() else { return }
+                selectedIDs.forEach { store.deletePermanently($0) }; workspace.tableSelection = []
+            }
             Button("Cancel", role: .cancel) {}
         } message: { Text("This cannot be undone.") }
     }
 
+    private func mutate(_ ids: Set<UUID>, restore: Bool) {
+        guard store.flush() else { return }
+        for id in ids { if restore { store.restore(id) } else { store.trash(id) } }
+        workspace.tableSelection = []
+    }
     private func deleteSelected() {
-        guard let id = selection else { return }
-        if scope == .trash { confirmDeletion = true }
-        else { onTrash(id); selection = nil }
+        if workspace.tableTrash { confirmDeletion = true } else { mutate(selectedIDs, restore: false) }
+    }
+}
+
+enum NotesFilter {
+    static func rows(store: NoteStore, categories: CategoryStore, query: String, trash: Bool = false, topic: UUID? = nil) -> [Note] {
+        let source = trash ? store.trashedNotes : store.activeNotes
+        let parsed = SmartQuery(query, categories: categories.categories)
+        guard let filters = parsed.categoryIDs(in: categories.categories) else { return [] }
+        return source.filter { note in
+            let labels = categories.labels(for: note.id).effective
+            guard filters.isSubset(of: labels), topic.map({ labels.contains($0) }) ?? true else { return false }
+            let names = categories.names(for: note.id)
+            return parsed.text.split(whereSeparator: \.isWhitespace).allSatisfy { word in
+                note.text.range(of: String(word), options: [.caseInsensitive, .diacriticInsensitive]) != nil ||
+                names.range(of: String(word), options: [.caseInsensitive, .diacriticInsensitive]) != nil
+            }
+        }
     }
 }

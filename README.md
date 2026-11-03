@@ -4,7 +4,7 @@ A little room to think. A minimal, translucent scratchpad that floats over your 
 
 **macOS 14+ · Apple Silicon + Intel · MIT licensed**
 
-[Download v0.7.0 preview](https://github.com/kush-10/drafts/releases/tag/v0.7.0) · [User guide](docs/GUIDE.md) · [Issues](https://github.com/kush-10/drafts/issues)
+[Download v0.9.1 preview](https://github.com/kush-10/drafts/releases/tag/v0.9.1) · [User guide](docs/GUIDE.md) · [Issues](https://github.com/kush-10/drafts/issues)
 
 ![Drafts floating notepad with sample notes](docs/images/notepad.png)
 
@@ -18,7 +18,7 @@ A little room to think. A minimal, translucent scratchpad that floats over your 
 
 ## Install
 
-1. Download [Drafts-0.7.0-universal.dmg](https://github.com/kush-10/drafts/releases/download/v0.7.0/Drafts-0.7.0-universal.dmg).
+1. Download [Drafts-0.9.1-universal.dmg](https://github.com/kush-10/drafts/releases/download/v0.9.1/Drafts-0.9.1-universal.dmg).
 2. Open it, drag **Drafts** into **Applications**, then launch it.
 3. Press **⌥Space** to show the notepad; press again to save and hide. Drafts lives in the menu bar, not the Dock.
 

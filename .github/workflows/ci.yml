@@ -15,14 +15,18 @@ concurrency:
 
 jobs:
   test-and-package:
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Prepare Metal toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
       - name: Test
         run: swift test
+      - name: Test installer safety
+        run: python3 -m unittest discover -s Tests/InstallerTests -v
       - name: Build universal preview packages
         run: ./scripts/package-release.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

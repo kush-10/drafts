@@ -6,12 +6,12 @@ Detailed installation, usage, storage, and development reference for Drafts.
 
 ## Install
 
-1. Download **[Drafts-0.7.0-universal.dmg](https://github.com/kush-10/drafts/releases/download/v0.7.0/Drafts-0.7.0-universal.dmg)** from the [official release](https://github.com/kush-10/drafts/releases/tag/v0.7.0).
+1. Download **[Drafts-0.9.1-universal.dmg](https://github.com/kush-10/drafts/releases/download/v0.9.1/Drafts-0.9.1-universal.dmg)** from the [official release](https://github.com/kush-10/drafts/releases/tag/v0.9.1).
 2. Open the disk image and drag **Drafts** into **Applications**.
 3. Eject the disk image, then open Drafts from Applications.
 4. Press **⌥Space** to open the notepad; press it again to save and hide. There is **no Dock icon**; Drafts normally lives in the menu bar.
 
-A [ZIP download](https://github.com/kush-10/drafts/releases/download/v0.7.0/Drafts-0.7.0-universal.zip) is available too: extract it, move `Drafts.app` into Applications, then open it. GitHub’s automatically generated **Source code** archives are not app installers.
+A [ZIP download](https://github.com/kush-10/drafts/releases/download/v0.9.1/Drafts-0.9.1-universal.zip) is available too: extract it, move `Drafts.app` into Applications, then open it. GitHub’s automatically generated **Source code** archives are not app installers.
 
 ### First-launch security warning
 
@@ -30,7 +30,7 @@ Do **not** disable Gatekeeper globally, bypass a managed Mac’s restrictions, o
 Download `SHA256SUMS.txt` from the same release. In Terminal, run this in the folder containing the DMG and compare its hash with the matching line in that file:
 
 ```sh
-shasum -a 256 Drafts-0.7.0-universal.dmg
+shasum -a 256 Drafts-0.9.1-universal.dmg
 ```
 
 The release also includes `release-info.json`, which states the version, architectures, signing type, and notarization status. Checksums detect mismatched downloads; they are not an independent developer identity or a replacement for notarization.

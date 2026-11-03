@@ -1,32 +1,33 @@
-## Drafts v0.7.0 — public preview
+## Drafts v0.9.1 — public preview
 
-A minimal, dark, translucent scratchpad for macOS 14+.
+A minimal, translucent scratchpad for macOS 14+. Apple Silicon and Intel are included; optional local AI requires Apple Silicon.
 
-### New
+### New since v0.7.0
 
-- **⌘F** now expands the notepad to fill the current display's usable area. Press it again to restore the previous size and position, keeping your text, selection, and undo history. This does not enter a separate macOS full-screen Space.
-- **⌘L** now opens the integrated searchable note list (previously ⌘F). Both shortcuts work while its search field is focused. The footer, menus, and Settings show the new bindings.
-- Switching apps/windows or clicking outside now **saves and hides** the notepad and integrated list, without swallowing the click or stealing focus back. The separate full-list editor and Settings stay open until closed normally.
+- **Optional on-device AI topics:** download and select an MLX model in Settings. No server, API key, or bundled model weights. Downloads are explicit and checksum-verified.
+- **Topic organisation:** automatic analysis after successful saves, cancellable organisation of existing notes, manual overrides, and optional memory based on human-confirmed examples. Note text is never rewritten.
+- **Quick topic assignment:** type `/Topic` while writing. Search note text and topics with **⌘K**, or **⌥⇧K** from any app. Search never runs AI.
+- **Integrated All notes:** **⌥⇧L** opens the notes table in the notepad, with filtering, sorting, multiple selection, batch topic actions, Trash, and restore.
+- **Appearance and settings:** twenty themes, font and size controls with live previews, and settings grouped into focused sections.
+- **Writing improvements:** a draggable top bar, improved caret visibility, configurable global shortcuts, and remembered window size.
 
-### Safety and polish
+### Changed window behaviour
 
-- Failed saves keep the note and pending changes open. Error sheets are protected from automatic dismissal, with no duplicate error dialogs.
-- Reopening a hidden note starts at the usual compact 760 × 500 size; the global **⌥Space** show/hide toggle is preserved.
-- Integrated-list selection stays in the same window, including when expanded. Blank-draft reuse, copy-and-close, formatting, and opt-in retention are unchanged.
-- The About version now comes directly from the app bundle to prevent version drift. Existing notes and settings are preserved.
+Switching apps or clicking outside now **keeps the notepad open**. Use **⌥Space**, Escape, or Copy & close to save and hide. **⌘F** still expands/restores the window. Size and expanded state are remembered for 30 minutes by default, adjustable in Settings.
+
+**⌘K** is search; **⌥⇧L** is All notes. **⌘L** is no longer bound. Reopening chooses the most recently edited active note.
 
 ### Install or update
 
-Download **Drafts-0.7.0-universal.dmg**, quit an older copy, drag Drafts into Applications, eject the disk image, then launch Drafts from Applications. A ZIP is also available. Both Apple Silicon and Intel are included; macOS 14+ is required. GitHub's “Source code” archives are not installers.
+Download **Drafts-0.9.1-universal.dmg**, quit an older copy, and drag Drafts into Applications. Eject the disk image and launch Drafts from Applications. A ZIP, `SHA256SUMS.txt`, and `release-info.json` are also available. GitHub's “Source code” archives are not installers. There is no automatic updater.
 
-**This preview is ad-hoc signed and not Apple-notarized.** macOS may block the first launch. After attempting to open it, use **System Settings → Privacy & Security → Open Anyway**, then confirm Open, only if you trust the official download. Do not disable Gatekeeper. See the README for full instructions and checksum verification.
+**This preview is ad-hoc signed and not Apple-notarized.** If macOS blocks the official download and you trust it, first try opening the app, then use **System Settings → Privacy & Security → Open Anyway**. Never disable Gatekeeper, bypass a managed Mac's restrictions, or override malware or damaged-app warnings. See the [installation guide](https://github.com/kush-10/drafts/blob/main/docs/GUIDE.md#install) for details and checksum verification.
 
-Drafts lives in the menu bar, not the Dock. **⌥Space** opens a note and saves/hides it on the next press. **⌘,** opens Settings, including the option to hide or restore the menu-bar icon. If an older custom global shortcut uses the now-reserved **⌘L**, choose another binding in Settings; the icon stays visible if registration fails.
+Drafts lives in the menu bar, not the Dock. **⌥Space** shows the notepad and saves/hides it on the next press; **⌘,** opens Settings.
 
 ### Data and limitations
 
-Notes stay on your Mac. There is no account, sync, networking, clipboard monitoring, or global typing monitoring. Mouse-down/focus events are observed only while the notepad is visible to detect outside interactions; they are not recorded. No Accessibility permission is required.
-
-Auto-delete is off by default. If enabled, hiding also applies the existing permanent last-edit retention policy, including Trash. Back up important notes.
-
-Both CPU architectures are built and verified; runtime tests run on Apple Silicon, not physical Intel hardware. Spaces, full-screen apps, multiple displays, and older supported macOS versions need broader real-world testing. No automatic updater is included.
+- Notes and topic analysis stay on your Mac. Network access is used only for model downloads you request. No accounts, sync, analytics, clipboard monitoring, or Accessibility permission.
+- Notes, manual topic choices, preferences, and downloaded models remain separate from the app bundle. Back up `~/Library/Application Support/Drafts/Notes/`, including its hidden `.drafts/` subfolder.
+- Automatic deletion is off by default. If enabled, expired notes are permanently deleted, including Trash.
+- Local AI is Apple Silicon only. Physical Intel hardware, Spaces, full-screen apps, multiple displays, and older supported macOS versions need broader testing.

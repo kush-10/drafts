@@ -11,14 +11,14 @@ The current release is a **preview**, ad-hoc signed and **not notarized**. Ad-ho
 
 ## Build release assets
 
-Use a Mac with Xcode 15+ / Swift 5.9+ and the command-line tools selected. No third-party build tools are required.
+Use a Mac with Swift 6.3+, a compatible full Xcode installation with developer tools selected, and the Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`). No third-party build tools are required.
 
 ```sh
 swift test
 ./scripts/package-release.sh
 ```
 
-The script reads the version from `Support/Info.plist`, builds both Apple Silicon and Intel slices, verifies the app signature and architectures, creates and verifies the DMG, and writes artifacts into `dist/releases/v<VERSION>/`. It stages a separate app so it does not overwrite a locally running `dist/Drafts.app`.
+The script reads the version from `Support/Info.plist`, builds both Apple Silicon and Intel slices, verifies the app signature and architectures, creates and verifies the DMG, and writes artifacts into `dist/releases/v<VERSION>/`. It stages a separate app without replacing or quitting the installed app.
 
 It refuses to overwrite an existing version’s release assets. Bump `CFBundleShortVersionString` and `CFBundleVersion` for a new release, and update README download links, `Support/Install.txt`, and release notes. The About panel reads its version directly from the app bundle.
 

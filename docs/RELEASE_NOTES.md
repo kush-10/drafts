@@ -10,6 +10,7 @@ A minimal, translucent scratchpad for macOS 14+. Apple Silicon and Intel are inc
 - **Integrated All notes:** **⌥⇧L** opens the notes table in the notepad, with filtering, sorting, multiple selection, batch topic actions, Trash, and restore.
 - **Appearance and settings:** twenty themes, font and size controls with live previews, and settings grouped into focused sections.
 - **Writing improvements:** a draggable top bar, improved caret visibility, configurable global shortcuts, and remembered window size.
+- **Self-contained packages:** the native MLX helper, Metal resources, and Swift compatibility libraries are included. Xcode is not required to run the app.
 
 ### Changed window behaviour
 

@@ -30,6 +30,17 @@ STAGING="$(mktemp -d "$ROOT/dist/.package-$VERSION.XXXXXX")"
 trap 'rm -rf -- "$STAGING"' EXIT
 APP_OUTPUT_DIR="$STAGING/build" UNIVERSAL=1 "$ROOT/scripts/build-app.sh" release
 APP="$STAGING/build/Drafts.app"
+if [[ "$(uname -m)" == "arm64" ]]; then
+    python3 - "$APP" <<'PY'
+import json, os, pathlib, subprocess, sys
+helper = pathlib.Path(sys.argv[1]) / "Contents/MacOS/DraftsTopicModel"
+result = subprocess.run([str(helper), "--check-runtime"], check=True, capture_output=True,
+                        text=True, timeout=30, env={"PATH": "/usr/bin:/bin", "HOME": os.path.expanduser("~")})
+if not json.loads(result.stdout).get("ready"):
+    raise RuntimeError("The packaged MLX runtime did not pass its check.")
+print("Packaged MLX runtime: ready")
+PY
+fi
 SIGNING="ad-hoc"
 NOTARIZED=false
 

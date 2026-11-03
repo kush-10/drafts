@@ -63,15 +63,20 @@ if [[ "$CONFIGURATION" == "release" ]]; then
     strip -S "$APP/Contents/MacOS/Drafts"
     strip -S "$HELPER"
 fi
+python3 "$ROOT/scripts/bundle-swift-runtime.py" "$APP"
 if [[ "${UNIVERSAL:-0}" == "1" ]]; then
     lipo "$APP/Contents/MacOS/Drafts" -verify_arch arm64
     lipo "$APP/Contents/MacOS/Drafts" -verify_arch x86_64
+    lipo "$HELPER" -verify_arch arm64
+    lipo "$HELPER" -verify_arch x86_64
 fi
 if [[ "$SIGNER" == "-" ]]; then
+    for library in "$APP/Contents/Frameworks"/*.dylib(N); do codesign --force --sign - "$library"; done
     codesign --force --sign - "$HELPER"
     for bundle in "$APP/Contents/Resources"/*.bundle(N); do codesign --force --sign - "$bundle"; done
     codesign --force --sign - "$APP"
 else
+    for library in "$APP/Contents/Frameworks"/*.dylib(N); do codesign --force --options runtime --timestamp --sign "$SIGNER" "$library"; done
     codesign --force --options runtime --timestamp --sign "$SIGNER" "$HELPER"
     for bundle in "$APP/Contents/Resources"/*.bundle(N); do codesign --force --timestamp --sign "$SIGNER" "$bundle"; done
     codesign --force --options runtime --timestamp --sign "$SIGNER" "$APP"

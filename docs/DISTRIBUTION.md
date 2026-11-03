@@ -20,6 +20,8 @@ swift test
 
 The script reads the version from `Support/Info.plist`, builds both Apple Silicon and Intel slices, verifies the app signature and architectures, creates and verifies the DMG, and writes artifacts into `dist/releases/v<VERSION>/`. It stages a separate app without replacing or quitting the installed app.
 
+App packaging includes required Swift compatibility libraries and removes developer-machine runtime search paths. On Apple Silicon, packaging also checks the bundled MLX runtime before creating release assets. Neither Xcode nor model weights are required to launch the downloaded app.
+
 It refuses to overwrite an existing version’s release assets. Bump `CFBundleShortVersionString` and `CFBundleVersion` for a new release, and update README download links, `Support/Install.txt`, and release notes. The About panel reads its version directly from the app bundle.
 
 To build just the universal app locally:

@@ -142,6 +142,12 @@ The bank persists only source note IDs, content fingerprints and explicit positi
 
 Plain search matches note contents and assigned topic names. `/Mandir planning` restricts results to Mandir; `/Mandir /Prompt` finds mandir-related AI prompts. Type `/` for topic suggestions and use Tab/Return to complete. Multiple topic filters require all named topics. Search uses saved metadata only and never loads the model.
 
+## Open at startup
+
+Enable **Settings → General → Startup → Open at startup** to launch Drafts automatically when you log in to this Mac. It is off by default and uses macOS Login Items, without a separate helper or launch agent. Turn the switch off to stop automatic launches; Drafts stays open until you quit it.
+
+If macOS requires approval, use **Open Login Items Settings…** and allow Drafts in **System Settings → General → Login Items**. The setting refreshes when you return to Drafts and respects changes made in System Settings. A pending switch means registration was requested, not that macOS has approved it. Run the installed app from Applications to manage startup.
+
 ## Themes
 
 Settings is split into **General, Appearance, Shortcuts, Organisation, Models, Topics & Memory, and Storage** instead of one long page.
@@ -181,7 +187,7 @@ Upgrading from the older Trash-based cleanup policy preserves the interval but l
 
 To update, quit Drafts from its menu or with **⌘Q**, then replace the app in Applications with the new download. There is no automatic updater. Notes and preferences remain separate from the app bundle.
 
-To uninstall, quit Drafts and move it out of Applications. This does **not** remove your saved notes. If you also want to remove them, back them up first and delete the storage folder in Finder yourself.
+To uninstall, turn off **Open at startup** if enabled, quit Drafts and move it out of Applications. This does **not** remove your saved notes. If you also want to remove them, back them up first and delete the storage folder in Finder yourself.
 
 ## Build from source
 

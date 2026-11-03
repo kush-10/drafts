@@ -13,6 +13,7 @@ A little room to think. A minimal, translucent scratchpad that floats over your 
 - A floating editor with autosave. Stays open when you switch apps; hide it when you're done.
 - Fast text and topic search, plus a notes table with sorting, batch actions, and Trash.
 - Basic formatting, custom fonts, and twenty live-preview themes.
+- Optional open at startup, managed through macOS Login Items in Settings → General.
 - Manual topic assignment with `/Topic`, or optional on-device AI organisation.
 - Local-only notes. No accounts, sync, analytics, or clipboard monitoring.
 

@@ -18,7 +18,6 @@ final class LoginItemController: ObservableObject {
     // macOS owns this preference, so changes made in System Settings remain authoritative.
     var isRegistered: Bool { status == .enabled || status == .requiresApproval }
     var needsApproval: Bool { status == .requiresApproval }
-    var isUnavailable: Bool { status == .notFound }
 
     init(service: LoginItemService = SMAppService.mainApp,
          showSystemSettings: @escaping () -> Void = SMAppService.openSystemSettingsLoginItems) {
@@ -33,6 +32,8 @@ final class LoginItemController: ObservableObject {
         error = nil
         refresh()
         do {
+            // macOS can return .notFound before the main app's first registration.
+            // Let register() determine availability instead of disabling the setting.
             if enabled && !isRegistered { try service.register() }
             else if !enabled && isRegistered { try service.unregister() }
         } catch {

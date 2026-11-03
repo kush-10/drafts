@@ -136,17 +136,12 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 22) {
             section("Startup") {
                 Toggle("Open at startup", isOn: Binding(get: { loginItem.isRegistered }, set: { loginItem.setEnabled($0) }))
-                    .disabled(loginItem.isUnavailable)
                 Text("Automatically open Drafts when you log in to this Mac.")
                     .font(.system(size: 11)).foregroundStyle(DraftsTheme.secondary)
                 if loginItem.needsApproval {
                     Text("Drafts won’t open at startup until you allow it in System Settings → General → Login Items.")
                         .font(.system(size: 11)).foregroundStyle(DraftsTheme.secondary)
                     Button("Open Login Items Settings…") { loginItem.openSystemSettings() }
-                }
-                if loginItem.isUnavailable {
-                    Text("Install Drafts in Applications and reopen it to manage startup.")
-                        .font(.system(size: 11)).foregroundStyle(DraftsTheme.secondary)
                 }
                 if let error = loginItem.error {
                     Text(error).font(.system(size: 11)).textSelection(.enabled)

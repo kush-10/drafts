@@ -30,7 +30,6 @@ final class LoginItemTests: XCTestCase {
         controller.refresh()
         XCTAssertFalse(controller.isRegistered)
         XCTAssertFalse(controller.needsApproval)
-        XCTAssertFalse(controller.isUnavailable)
         XCTAssertEqual(service.registrations, 0)
         XCTAssertEqual(service.unregistrations, 0)
     }
@@ -118,11 +117,18 @@ final class LoginItemTests: XCTestCase {
         XCTAssertNil(controller.error)
     }
 
-    func testMissingServiceIsReportedAsUnavailable() {
+    func testMissingRecordCanBeRegisteredOnFirstUse() {
         let service = TestLoginItemService()
         service.status = .notFound
         let controller = LoginItemController(service: service)
-        XCTAssertTrue(controller.isUnavailable)
+        XCTAssertFalse(controller.isRegistered)
+        controller.setEnabled(true)
+        XCTAssertEqual(service.registrations, 1)
+        XCTAssertEqual(controller.status, .enabled)
+        XCTAssertTrue(controller.isRegistered)
+        XCTAssertNil(controller.error)
+        controller.setEnabled(false)
+        XCTAssertEqual(service.unregistrations, 1)
         XCTAssertFalse(controller.isRegistered)
     }
 
